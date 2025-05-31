@@ -94,10 +94,10 @@ Implementations:
 ### 3.4 Tool Sub-system
 
 * Registry in `tool_manager.py` auto-loads default tools.  
-* Each tool derives from `Tool`, signature:
+* Each tool derives from `LLMTool`, with the core method being `run_impl`:
 
 ```python
-def call(self, params: ToolCallParameters, workspace: WorkspaceManager) -> ToolResult: ...
+def run_impl(self, tool_input: dict[str, Any], message_history: Optional[MessageHistory] = None) -> ToolImplOutput: ...
 ```
 
 * Categories:

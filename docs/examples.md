@@ -130,15 +130,22 @@ Let’s build **HelloTool** that simply echoes a greeting.
 `src/ii_agent/tools/hello_tool.py`
 
 ```python
-from ii_agent.tools.base import Tool, ToolCallParameters, ToolResult
+from ii_agent.tools.base import LLMTool, ToolImplOutput
 
-class HelloTool(Tool):
+class HelloTool(LLMTool):
     name = "hello_tool"
     description = "Say hello to a given person"
+    input_schema = {
+        "type": "object",
+        "properties": {
+            "person": {"type": "string", "description": "The name of the person to greet."}
+        },
+        "required": ["person"],
+    }
 
-    def call(self, params: ToolCallParameters, workspace, message_queue=None) -> ToolResult:
-        person = params.get("person", "world")
-        return ToolResult(content=f"Hello, {person}!")
+    def run_impl(self, tool_input, message_history=None) -> ToolImplOutput:
+        person = tool_input.get("person", "world")
+        return ToolImplOutput(tool_output=f"Hello, {person}!", tool_result_message=f"Greeted {person}")
 ```
 
 ### 4.2 Register it
