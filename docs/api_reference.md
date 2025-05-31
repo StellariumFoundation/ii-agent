@@ -1,266 +1,293 @@
-# II-Agent API Reference
+# II-Agent API Reference  
 
-This document describes the **public Python API** of II-Agent.  
-All modules live under the top-level package `ii_agent`.  Import paths shown below assume:
+_Commit: a6da824638202089d0f43819d62d8e67506d2240 • Updated 31 May 2025_
+
+This reference documents the **public Python interfaces** you are expected to use or extend when integrating with II-Agent.  
+All import paths are relative to `ii_agent`, e.g.
 
 ```python
-from ii_agent import ...
+from ii_agent.tools.base import LLMTool
 ```
 
 ---
 
-## 1. Core Agent Layer
+## 1  Tooling Framework
 
-### 1.1 `BaseAgent`
+### 1.1 `ToolImplOutput`
 
-| Location | `src/ii_agent/agents/base.py` |
-|----------|------------------------------|
-
-```python
-class BaseAgent(ABC):
-    llm_client: LLMClient
-    tool_manager: ToolManager
-    context_manager: ContextManagerProtocol
-
-    def run(self, user_message: str) -> str: ...
-    def _prepare_prompt(self, user_message: str) -> LLMRequest: ...
-    def _extract_tool_calls(self, llm_response: LLMResponse) -> list[ToolCall]: ...
-    def _handle_tool_results(
-        self, tool_calls: list[ToolCall], results: list[ToolResult]
-    ) -> None: ...
-```
-
-* **run** – one top-level interaction loop: build prompt → call LLM → execute tools → repeat.  
-* **_prepare_prompt** – combine system prompt, history, & tool schemas.  
-* **_extract_tool_calls** – parse function-call JSON from LLM response.  
-* **_handle_tool_results** – append tool outputs to message history.
-
-> **Usage**
+File `src/ii_agent/tools/base.py`
 
 ```python
-from ii_agent.agents.base import BaseAgent
-from ii_agent.tools import ToolManager
-from ii_agent.llm.anthropic import AnthropicClient
-from ii_agent.llm.context_manager.llm_summarizing import LLMSummarizingContextManager
-
-agent = BaseAgent(
-    llm_client=AnthropicClient(api_key="..."),
-    tool_manager=ToolManager.default(),
-    context_manager=LLMSummarizingContextManager(),
-)
-answer = agent.run("Summarise the Industrial Revolution in 150 words.")
+@dataclass
+class ToolImplOutput:
+    tool_output: str | list[dict[str, Any]]
+    tool_result_message: str
+    auxiliary_data: dict[str, Any] = field(default_factory=dict)
 ```
 
-### 1.2 `AnthropicFC`
+* **tool_output** – value injected back into the LLM prompt (string or list of JSON objects).  
+* **tool_result_message** – concise log message, forwarded to UI.  
+* **auxiliary_data** – optional metadata (not shown to the model).
 
-| Location | `src/ii_agent/agents/anthropic_fc.py` |
-|----------|----------------------------------------|
+---
 
-Specialised subclass that uses **Claude Function-Calling**.
+### 1.2 `LLMTool`
+
+File `src/ii_agent/tools/base.py`
+
+```python
+class LLMTool(ABC):
+    # metadata
+    name: str
+    description: str
+    input_schema: dict[str, Any]          # JSON-Schema (Draft-07 subset)
+
+    # public
+    def run(
+        self,
+        tool_input: dict[str, Any],
+        message_history: MessageHistory | None = None,
+    ) -> str | list[dict[str, Any]]: ...
+
+    # override
+    @abstractmethod
+    def run_impl(
+        self,
+        tool_input: dict[str, Any],
+        message_history: MessageHistory | None = None,
+    ) -> ToolImplOutput: ...
+```
+
+`run()` is **@final** – it validates `tool_input` with `jsonschema`, calls `run_impl()`, catches errors and always returns a value suitable for LLM injection.
+
+#### Minimal Example
+
+```python
+# hello_tool.py
+from ii_agent.tools.base import LLMTool, ToolImplOutput
+
+class HelloTool(LLMTool):
+    name = "hello_tool"
+    description = "Return a friendly greeting"
+    input_schema = {
+        "type": "object",
+        "properties": {
+            "name": {"type": "string", "description": "Person to greet"}
+        },
+        "required": ["name"],
+    }
+
+    def run_impl(self, tool_input, *_):
+        greeting = f"Hello, {tool_input['name']}!"
+        return ToolImplOutput(tool_output=greeting,
+                              tool_result_message="Greeted user")
+```
+
+Register it (see _AgentToolManager_ below) and the LLM can invoke:
+
+```json
+{"name": "hello_tool", "arguments": {"name": "Ada"}}
+```
+
+---
+
+### 1.3 `AgentToolManager`
+
+File `src/ii_agent/tools/tool_manager.py`
+
+```python
+class AgentToolManager:
+    def __init__(self,
+        tools: list[LLMTool],
+        logger_for_agent_logs: logging.Logger,
+        interactive_mode: bool = True,
+    )
+    def reset(self) -> None             # clear internal state
+    def get_tools(self) -> list[LLMTool]
+    def run_tool(
+        self,
+        tool_call: ToolCallParameters,
+        history: MessageHistory
+    ) -> str | list[dict[str, Any]]
+
+    def should_stop(self) -> bool       # True when tool chain decided to finish
+    def get_final_answer(self) -> str   # Return cached answer
+```
+
+`run_tool()` enforces permission prompts (via WebSocket/CLI) if `interactive_mode` is **True** and the tool is risky (e.g. `bash_tool`).
+
+---
+
+## 2  Agent Layer
+
+### 2.1 `AnthropicFC`
+
+File `src/ii_agent/agents/anthropic_fc.py`
+
+Asynchronous orchestration around Anthropic function-calling:
 
 ```python
 class AnthropicFC(BaseAgent):
-    model: str = "claude-3-7-sonnet"
-    max_tokens: int = 4096
+    def __init__(self,
+        system_prompt: str,
+        client: LLMClient,
+        tools: list[LLMTool],
+        workspace_manager: WorkspaceManager,
+        message_queue: asyncio.Queue[RealtimeEvent],
+        logger_for_agent_logs: logging.Logger,
+        context_manager: ContextManager,
+        max_output_tokens_per_turn: int = 8_192,
+        max_turns: int = 10,
+        websocket: WebSocket | None = None,
+        session_id: uuid.UUID | None = None,
+        interactive_mode: bool = True,
+    )
 
-    def _prepare_prompt(...): ...
-    def _extract_tool_calls(...): ...
+    def start_message_processing(self) -> asyncio.Task
+    def run_agent(
+        self,
+        instruction: str,
+        files: list[str] | None = None,
+        resume: bool = False,
+        orientation_instruction: str | None = None,
+    ) -> str      # synchronous, but normally executed in ThreadPool
+    def cancel(self) -> None        # graceful interrupt
 ```
 
-*Accepts the same constructor as `BaseAgent` but defaults to Claude 3.7 Sonnet.*
+**Key behaviours**
+
+* Maintains `MessageHistory`; applies `context_manager.truncate()` each turn.  
+* Streams every stage to `message_queue` as `RealtimeEvent`s (see below).  
+* Handles single _tool_call_ per LLM turn; loops until `should_stop()` or `max_turns`.  
+* Supports _resume_: continue from previous interrupted state.
 
 ---
 
-## 2. LLM Clients
+## 3  Communication Primitives
 
-### Common Interface
+### 3.1 `EventType` (enum)
+
+File `src/ii_agent/core/event.py`
+
+* `USER_MESSAGE`  
+* `AGENT_RESPONSE` / `AGENT_RESPONSE_INTERRUPTED`  
+* `TOOL_CALL`  
+* `TOOL_RESULT`  
+* `PROCESSING`, `SYSTEM`, `ERROR`, etc.
+
+### 3.2 `RealtimeEvent`
+
+```python
+class RealtimeEvent(BaseModel):
+    type: EventType
+    content: dict[str, Any]
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+```
+
+* **JSON-serialisable**; `.model_dump()` used by WS server.  
+* Persisted to DB (`event` table) for replay.
+
+---
+
+## 4  Conversation State
+
+### 4.1 `MessageHistory`
+
+File `src/ii_agent/llm/message_history.py`
+
+```python
+class MessageHistory:
+    def __init__(self, context_manager: ContextManager)
+
+    # add
+    def add_user_prompt(text: str, image_blocks: list[dict] | None = None) -> None
+    def add_assistant_turn(results: list[TextResult]) -> None
+    def add_tool_call_result(call: ToolCallParameters, result: str) -> None
+
+    # query
+    def get_messages_for_llm() -> list[dict]
+    def get_pending_tool_calls() -> list[ToolCallParameters]
+    def get_last_assistant_text_response() -> str
+
+    # maintenance
+    def truncate() -> None              # delegate to context_manager
+    def clear() -> None
+    def clear_from_last_to_user_message() -> None
+    def count_tokens() -> int
+```
+
+### 4.2 Context Managers
+
+| Class | Strategy | Module |
+|-------|----------|--------|
+| `LLMSummarizingContextManager` | Call LLM to summarise oldest turns | `llm/context_manager/llm_summarizing.py` |
+| `AmortizedForgettingContextManager` | Probabilistic dropping as budget nears | `llm/context_manager/amortized_forgetting.py` |
+| `PipelineContextManager` | Chain multiple managers | `llm/context_manager/pipeline.py` |
+
+---
+
+## 5  LLM Client Abstraction
 
 ```python
 class LLMClient(Protocol):
-    model: str
-    def complete(
+    def generate(
         self,
-        messages: list[ChatMessage],
-        tools: list[ToolSchema] | None = None,
-        **kwargs
-    ) -> LLMResponse: ...
+        messages: list[dict],
+        max_tokens: int,
+        tools: list[ToolParam] | None,
+        system_prompt: str,
+    ) -> tuple[list[ModelResult], int]   # returns chunks + token count
 ```
 
-### Concrete Implementations
-
-| Client | File | Notes |
-|--------|------|-------|
-| **AnthropicClient** | `llm/anthropic.py` | Calls Anthropic HTTP API; supports function calling & streaming |
-| **OpenAIClient** | `llm/openai.py` | Used by image/video tools; wraps `/v1/chat/completions` |
-| **VertexAnthropicClient** | `llm/anthropic.py` (`vertex=True`) | Same interface, uses Google Vertex AI endpoint |
-
-```python
-from ii_agent.llm.anthropic import AnthropicClient
-
-llm = AnthropicClient(api_key="...", model="claude-3-7-sonnet")
-response = llm.complete([{"role": "user", "content": "Hello!"}])
-print(response.content)
-```
+Concrete implementation: `ii_agent.llm.anthropic.AnthropicClient`.
 
 ---
 
-## 3. Context Managers
-
-All implement `ContextManagerProtocol` (`llm/context_manager/base.py`).
-
-### Available Managers
-
-| Class | Strategy | Import |
-|-------|----------|--------|
-| `LLMSummarizingContextManager` | Summarises older turns via LLM | `llm.context_manager.llm_summarizing` |
-| `AmortizedForgettingContextManager` | Drops least-recent turns by token-budget | `llm.context_manager.amortized_forgetting` |
-| `PipelineContextManager` | Chains managers in order | `llm.context_manager.pipeline` |
+## 6  Putting It Together – Quick Code Sample
 
 ```python
-from ii_agent.llm.context_manager.pipeline import PipelineContextManager
-ctx = PipelineContextManager([
-    LLMSummarizingContextManager(summary_ratio=0.2),
-    AmortizedForgettingContextManager(max_tokens=8000),
-])
-```
-
----
-
-## 4. Tool System
-
-### 4.1 `Tool` Base Class
-
-| Location | `src/ii_agent/tools/base.py` |
-
-```python
-class Tool(ABC):
-    name: str
-    description: str
-    parameters: dict[str, ToolParam]
-
-    def call(
-        self,
-        params: ToolCallParameters,
-        workspace: WorkspaceManager,
-        message_queue: MessageQueue | None = None
-    ) -> ToolResult: ...
-```
-
-*Return value must be JSON-serialisable; large outputs are saved to workspace.*
-
-### 4.2 `ToolManager`
-
-| Location | `src/ii_agent/tools/tool_manager.py` |
-
-```python
-class ToolManager:
-    def __init__(self, tools: list[Tool]): ...
-    @classmethod
-    def default(cls) -> "ToolManager": ...
-    def register(self, tool: Tool) -> None: ...
-    def get_schema(self) -> list[ToolSchema]: ...
-    def dispatch(self, tool_call: ToolCall, workspace: WorkspaceManager) -> ToolResult: ...
-```
-
-> **Implementing a custom tool**
-
-```python
-from ii_agent.tools.base import Tool
-
-class HelloTool(Tool):
-    name = "hello_tool"
-    description = "Say hello"
-    parameters = {"name": {"type": "string", "description": "person"}}
-
-    def call(self, params, workspace, **_):
-        return {"content": f"Hello, {params['name']}!"}
-
-# Register
-tool_mgr = ToolManager.default()
-tool_mgr.register(HelloTool())
-```
-
----
-
-## 5. Utilities
-
-| Module | Purpose |
-|--------|---------|
-| `llm/token_counter.py` | Heuristic token counting for budgeting |
-| `utils/workspace_manager.py` | Per-session file isolation & static URL mapping |
-| `utils/prompt_generator.py` | Generates system & tool prompts |
-| `utils/indent_utils.py` | Pretty-prints nested JSON for logs |
-
-```python
-from ii_agent.llm.token_counter import estimate_tokens
-tokens = estimate_tokens("Hello world")
-```
-
----
-
-## 6. Browser Automation
-
-### 6.1 `Browser`
-
-| File | `src/ii_agent/browser/browser.py` |
-|------|-----------------------------------|
-
-```python
-class Browser:
-    def visit(self, url: str) -> str: ...
-    def click(self, selector: str) -> None: ...
-    def enter_text(self, selector: str, text: str) -> None: ...
-    def scroll(self, amount: int = 1000) -> None: ...
-    def screenshot(self) -> bytes: ...
-```
-
-Internally uses **Playwright Chromium** with a CV-based `Detector` (`browser/detector.py`) to find visible elements.
-
-### 6.2 Browser Tool Suite
-
-| Tool | Action |
-|------|--------|
-| `VisitWebpageTool` | Load page and save HTML |
-| `BrowserClickElementTool` | Click element by text / CSS |
-| `BrowserScrollTool` | Scroll viewport |
-| `BrowserEnterTextTool` | Type into input |
-| `ListHtmlLinksTool` | Extract list of `<a>` links |
-
-All tools live under `tools/browser_tools/`.
-
----
-
-## 7. Putting It Together – End-to-End Example
-
-```python
+import asyncio, uuid, logging
+from ii_agent.tools.tool_manager import AgentToolManager
+from ii_agent.tools.base import LLMTool, ToolImplOutput
 from ii_agent.agents.anthropic_fc import AnthropicFC
-from ii_agent.tools.tool_manager import ToolManager
+from ii_agent.llm.anthropic import AnthropicClient
 from ii_agent.llm.context_manager.llm_summarizing import LLMSummarizingContextManager
 from ii_agent.utils.workspace_manager import WorkspaceManager
+from ii_agent.core.event import RealtimeEvent, EventType
 
+# 1. custom tool
+class HelloTool(LLMTool):
+    name, description = "hello_tool", "Say hello"
+    input_schema = {"type":"object","properties":{"name":{"type":"string"}},"required":["name"]}
+    def run_impl(self, params, *_):
+        return ToolImplOutput(f"Hello {params['name']}!", "Greeted user")
+
+# 2. infrastructure
 workspace = WorkspaceManager(root="./workspace_demo")
+queue = asyncio.Queue()
+
+client = AnthropicClient(api_key="sk-...", model="claude-3-7-sonnet")
+context_mgr = LLMSummarizingContextManager(client=client, token_budget=120_000)
+tools = [HelloTool()]
 agent = AnthropicFC(
-    llm_client=AnthropicClient(api_key="..."),
-    tool_manager=ToolManager.default(),
-    context_manager=LLMSummarizingContextManager(max_tokens=12000),
+    system_prompt="You are II-Agent.",
+    client=client,
+    tools=tools,
     workspace_manager=workspace,
+    message_queue=queue,
+    logger_for_agent_logs=logging.getLogger("agent"),
+    context_manager=context_mgr,
+    session_id=uuid.uuid4(),
 )
 
-print(agent.run("Find the latest GDP growth rate of Japan, cite your source."))
+# 3. fire and forget
+async def main():
+    agent.start_message_processing()          # background task
+    print(agent.run_agent("Use hello_tool to greet Ada.", resume=False))
+
+asyncio.run(main())
 ```
 
 ---
 
-## 8. Versioning & Stability
-
-Public APIs listed here follow **semantic versioning**:
-
-* **Minor** releases may add new optional parameters.
-* **Major** releases may rename or remove classes/methods.
-
-Check the [changelog](../CHANGELOG.md) for detailed history.
-
----
-
-© Intelligent Internet – II-Agent is licensed under Apache 2.0.  
-Feel free to extend and integrate; contributions are welcome!
+_End of API Reference_

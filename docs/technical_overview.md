@@ -1,165 +1,183 @@
-# II-Agent – Technical Overview
+# II-Agent – Technical Overview (✱ v0.2)
 
-II-Agent is an open-source framework that turns Large-Language-Model (LLM) calls into **autonomous agents** capable of planning, tool use, and multimodal reasoning.  
-It powers a **command-line interface (CLI)**, a **WebSocket (WS) back-end** that feeds a React front-end, and can also run headless in batch mode for benchmarks such as GAIA.
-
----
-
-## 1. Project Purpose
-
-* Provide a **batteries-included agent runtime** that can:  
-  • converse via text & streaming events  
-  • plan multi-step tasks  
-  • call external tools (bash, browser, web-search, file editing, …)  
-* Offer both **interactive** (CLI / Web UI) and **programmatic** (Python import) interfaces.
-* Serve as a **research playground** for experimenting with context-management, reflection loops, and evaluation on agent benchmarks.
+II-Agent turns Anthropic Claude 3.x into a **fully-autonomous, tool-using assistant** that speaks over WebSockets, persists every interaction, and executes real code & browser actions inside an isolated workspace.  
+This document explains **how the system is actually built**, based on the source code at commit `a6da824`.
 
 ---
 
-## 2. High-Level Architecture
+## 1. Runtime Stack at a Glance
+
+| Layer | Technology | Key Modules |
+|-------|------------|-------------|
+| API / Transport | **FastAPI** (`ws_server.py`) | REST endpoints + `/ws` WebSocket |
+| Real-time Events | **WebSocket** streaming `RealtimeEvent` JSON | `core/event.py` |
+| Concurrency | **asyncio** / `anyio` | pervasive `async/await` |
+| Orchestration | `AnthropicFC` (function-calling) | `agents/anthropic_fc.py` |
+| Context Management | LLM summary & amortised forgetting | `llm/context_manager/*` |
+| Tool System | `AgentToolManager` with permission gates | `tools/*` |
+| Data Persistence | **SQLite** via SQLAlchemy | `db/` |
+| Browser Automation | **Playwright** headless Chromium + CV detector | `browser/*` |
+| Workspace | Per-session FS sandbox, static file server | `utils/workspace_manager.py` |
+
+---
+
+## 2. High-Level Flow (one WebSocket connection)
 
 ```mermaid
-flowchart TB
-    subgraph Interfaces
-        CLI["cli.py<br/>TTY / StdIO"]
-        WS["ws_server.py<br/>FastAPI WS"]
-        Batch["run_gaia.py<br/>Batch Runner"]
+sequenceDiagram
+    participant FE as React Frontend
+    participant WS as FastAPI / WebSocket
+    participant AG as AnthropicFC Agent
+    participant TM as ToolManager
+    participant DB as SQLite
+    participant BW as Browser Worker
+
+    FE->>WS: init_agent
+    WS->>AG: create Agent instance
+    WS-->>FE: AGENT_INITIALIZED (RealtimeEvent)
+
+    loop each user turn
+        FE->>WS: query {text, files}
+        WS->>DB: save EVENT(user)
+        WS->>AG: run_agent(text, files)
+        AG->>AG: context_manager.trim()
+        AG->>Claude: chat / fn-calling
+        Claude-->>AG: response (tool_calls[]?)
+        alt tool call
+            AG->>TM: dispatch(tool_call)
+            TM->>BW: (browser/tool)*
+            BW-->>TM: result
+            TM-->>AG: result
+            AG->>DB: save EVENT(tool_result)
+        end
+        AG->>DB: save EVENT(agent_msg)
+        AG-->>WS: stream RealtimeEvent(s)
+        WS-->>FE: realtime JSON
     end
-
-    subgraph Core
-        Agents["Agents Layer<br/>AnthropicFC, …"]
-        Context["Context Managers<br/>LLM-Summary, Amortized"]
-        Tools["Tools Layer<br/>bash, browser, …"]
-        LLM["LLM Clients<br/>Anthropic, Vertex AI, OpenAI"]
-        Utils["Utils & Shared<br/>token_counter, indent, …"]
-    end
-
-    DB["SQLite (sessions & events)"]
-    Browser["Playwright Headless\n(+Detector CV)"]
-
-    CLI --> Agents
-    WS --> Agents
-    Batch --> Agents
-    Agents -->|invoke| Context
-    Agents -->|llm api| LLM
-    Agents -->|tool call| Tools
-    Tools --> Browser
-    Agents --> DB
-    WS --> DB
 ```
+
+*Every arrow from Agent to WS is an **async put** on an `asyncio.Queue`; the message-processor task forwards it to the client and the DB.*
 
 ---
 
 ## 3. Core Components
 
-### 3.1 Interfaces
-| Module | File | Highlights |
-|--------|------|------------|
-| CLI    | `cli.py` | REPL-style loop, streams `AgentEvent`s to stdout, optional permission gate. |
-| WS Server | `ws_server.py` | FastAPI + WebSocket, per-connection workspace, emits JSON event stream consumed by React front-end. |
-| Batch Runner | `run_gaia.py` | Iterates over GAIA dataset, executes tasks, stores traces. |
+### 3.1 FastAPI WebSocket Server (`ws_server.py`)
+* Accepts `/ws` connections; CORS-enabled.
+* Spawns:
+  * **Agent instance** per connection.
+  * **Background `asyncio.Task`** reading an `asyncio.Queue` of `RealtimeEvent`s.
+* REST helpers:
+  * `POST /api/upload` – base64 / text file upload into session workspace.
+  * `GET /api/sessions/{device}` – list previous sessions with first user message.
 
-### 3.2 Agents Layer
-* **`AnthropicFC`** (function-calling) orchestrates the reasoning loop:  
-  1. Build prompt with system text + history via Context Manager.  
-  2. Call LLM; parse tool calls / final answer.  
-  3. Execute tools; append results to history; repeat until `finished`.  
-* Plug-and-play: new agents can inherit `agents.base.BaseAgent`.
+### 3.2 `AnthropicFC` Agent
+* Pure **async** orchestration loop (`run_agent_async` is off-thread via `anyio.to_thread` to avoid blocking).
+* Maintains **MessageHistory** using a pluggable **ContextManager**:
+  * `LLMSummarizingContextManager` – LLM summarises stale turns.
+  * `AmortizedForgettingContextManager` – probabilistically drops messages when near the token budget.
+* Handles **interruptions** (client “cancel” / Ctrl-C) and injects synthetic assistant messages so the conversation can resume.
 
-### 3.3 LLM Clients (`src/ii_agent/llm`)
-* **Anthropic** via official SDK.  
-* **Vertex AI** wrapper for Claude models hosted on Google Cloud.  
-* **OpenAI** optional for image/video generation tools.  
-All share a `llm.base.LLMClient` interface (sync, token counting helpers).
+### 3.3 Tool System
+* `AgentToolManager` wraps a list of `LLMTool` instances.
+* Each tool **validates** JSON parameters (via `jsonschema`) then executes `run_impl`.
+* Permission-gated: for risky tools (`bash_tool`) the ToolManager pauses and asks the UI for confirmation unless `--needs-permission false`.
+* Tool result can be:
+  * Plain text.
+  * List of dicts (structured JSON).
+  * File paths (stored under `workspace/<session>` and served statically).
 
-### 3.4 Context Managers (`src/ii_agent/llm/context_manager`)
-| Manager | Purpose |
-|---------|---------|
-| `LLMSummarizingContextManager` | Summarises older turns to stay under token budget. |
-| `AmortizedForgettingContextManager` | Drops least-salient messages gradually. |
-| `PipelineContextManager` | Chain multiple managers for custom strategies. |
+### 3.4 Database Layer (`db/`)
+* **SQLite** default; write-ahead-log mode to support concurrent readers.
+* Tables:
+  * `session` – `id`, `device_id`, `workspace_dir`, `created_at`.
+  * `event` – chronological stream of every `RealtimeEvent` (type, payload, ts).
+* API surfaces in server allow frontend to **replay** a session by streaming stored events.
 
-### 3.5 Tools Layer (`src/ii_agent/tools`)
-* **Primitive**: `bash_tool`, `str_replace_tool`, `markdown_converter`, …  
-* **Browser**: visit page, click element, list links; built atop **Playwright** + CV detector.  
-* **Research**: web search, deep research orchestrator.  
-* **Multimodal**: pdf extract, audio transcribe, image generation.
-
-Tools implement `tools.base.Tool` (signature: `call(parameters, workspace, message_queue)`).
-
-### 3.6 Database
-* Simple **SQLite** via SQLAlchemy (`db/`) holds:
-  * `Session` rows – device & workspace info  
-  * `Event` rows – user/agent messages, tool results (used for replay)  
-
-### 3.7 Utilities
-* `token_counter` – rough token estimator for multiple models.  
-* `workspace_manager` – per-connection isolation, temp dirs, file serving.  
-* `prompt_generator`, `indent_utils`, `constants` – glue code for robust prompts.
+### 3.5 Browser Automation
+* `Browser` wrapper (sync) uses Playwright Chromium.
+* `detector.py` performs CV to find visible interactive elements for robust clicking.
+* Browser tools live in `tools/browser_tools/` (click, scroll, enter_text, dropdown, etc.).
 
 ---
 
-## 4. Data Flow
+## 4. Context-Management Strategy
 
-1. **Input** (user message via CLI / WS) → persisted as `Event`.  
-2. Agent loop builds **prompt** using `ContextManager` (history + system).  
-3. **LLM Client** completes; response may contain `tool_calls[]`.  
-4. For each call, **Tool Manager** dispatches to concrete Tool → returns result.  
-5. Result appended to history; agent decides to **continue** (go to step 2) or **finish** (produce `final_answer`).  
-6. All intermediate and final outputs stream back to client (stdout or WS).  
-7. Assets from tools (images, html files) stored in workspace and served via static file endpoint (`STATIC_FILE_BASE_URL`).
+| Stage | Action | Token Budget (default 120 k) |
+|-------|--------|------------------------------|
+| New message | Append user text & file list | +tokens |
+| Pre-LLM      | `history.truncate()` <br>1️⃣ Summarise oldest turns until ≤80 % budget <br>2️⃣ Drop low-salience messages until ≤60 % | — |
+| Post-LLM     | Persist assistant / tool call / result | Budget checked next turn |
 
 ---
 
-## 5. Deployment & Run Modes
+## 5. Workspace & File Handling
 
-| Mode | Command | Notes |
-|------|---------|-------|
-| **Local CLI** | `python cli.py` | Fastest way to try; asks for permission before exec if `--needs-permission`. |
-| **Web UI (Dev)** | `python ws_server.py --port 8000` + `cd frontend && npm run dev` | React/NextJS hot-reload; connects to WS backend. |
-| **Docker Compose** | `./start.sh` | Spins up backend (Python-uvicorn) + frontend + optional db. |
-| **Vertex AI** | Set `GOOGLE_APPLICATION_CREDENTIALS`, run with `--project-id` & `--region`. |
-| **Benchmark Batch** | `python run_gaia.py --task-uuid ...` | Generates trace logs & JSON results for GAIA. |
+```
+workspace/
+ └── <session_uuid>/
+      ├── uploads/          # user-uploaded via /api/upload
+      ├── browser/          # screenshots, page.html
+      ├── outputs/          # tool-generated artifacts
+      └── temp/
+```
 
-**Environment Variables** live in `.env` (backend) and `frontend/.env`.
-
----
-
-## 6. Extensibility
-
-| Extension Point | How to Add |
-|-----------------|------------|
-| **New Tool** | Create class inheriting `Tool`, register in `tools.__init__`, add to `tool_manager.register_default_tools()`. |
-| **New Agent** | Subclass `BaseAgent`, override `create_prompt()` / `extract_tool_calls()`. |
-| **Custom Context Strategy** | Compose managers via `PipelineContextManager` or implement `ContextManagerProtocol`. |
-| **Alternate LLM** | Implement `LLMClient` with `complete()` and `tokenizer`. |
-| **Frontend Plugins** | Add new action icons + API routes consuming WS events. |
-
-All public APIs are type-hinted; new modules should include docstrings and unit tests.
+Static files are served under  
+`{STATIC_FILE_BASE_URL}/workspace/<session_uuid>/…`.
 
 ---
 
-## 7. Testing Strategy
+## 6. Error Handling & Cancellation
 
-* **Unit tests** in `tests/` cover:
-  * LLM context management (`test_context_manager/`)  
-  * Tool logic (`test_bash_tool.py`, …)  
-  * Message history truncation.
-* **Integration tests** spin up an agent end-to-end with a dummy LLM stub.
-* **Pre-commit** runs `ruff`, `black --check`, and `pytest -q`. CI fails fast.
-* **Playwright** browser tools have recorded fixtures for headless tests (CI safe).
-* **Benchmark scripts** can be run on a subset of GAIA tasks to ensure regression-free reasoning.
+* **KeyboardInterrupt / client “cancel”** → `Agent.cancel()` sets `self.interrupted=True`; loop injects “Interrupted” messages.
+* If a tool exceeds timeouts the agent catches `asyncio.CancelledError`, returns a synthetic response, and keeps history consistent.
+* WebSocket disconnect triggers `cleanup_connection`:  
+  * Removes tasks from maps but leaves the message processor **running** so DB persistence continues.
 
 ---
 
-## 8. Additional Resources
+## 7. Extending II-Agent
 
-* [README.md](../README.md) – Quick-start & installation  
-* [docs/examples.md](examples.md) – Step-by-step demos  
-* [CONTRIBUTING.md](../CONTRIBUTING.md) – Developer workflow  
-* [GAIA benchmark traces](https://ii-agent-gaia.ii.inc/) – Live run examples  
+1. **Add a Tool** – subclass `LLMTool`, implement `run_impl`, register in `get_system_tools`.
+2. **Custom Context Policy** – subclass `BaseContextManager` or chain managers via `PipelineContextManager`.
+3. **Alternate Storage** – swap SQLite for Postgres by changing the SQLAlchemy engine URL.
+4. **Frontend** – consume `RealtimeEvent` schema; no backend change needed.
 
 ---
 
-**II-Agent** aims to bridge LLM reasoning and real-world execution.  
-Feel free to explore the codebase, try the agent, and extend it with your own ideas!
+## 8. Diagram: Deploy-Time Topology (Docker Compose)
+
+```
++---------+      8000/ws      +-----------------+
+|  React  | <───────────────> | FastAPI Backend |
+| Frontend|                  | (ws_server.py)  |
++---------+                  +----┬------------+
+                                  │ asyncio.Queue
+                                  │
+                           +------+-------+
+                           | AnthropicFC  |
+                           |   Agent      |
+                           +------+-------+
+                                  │ Playwright
+                                  │
+                         +--------▼---------+
+                         |   Browser-Worker |
+                         +--------┬---------+
+                                  │ SQLite (WAL)
+                         +--------▼---------+
+                         |  session/event   |
+                         +------------------+
+```
+
+---
+
+## 9. Key Design Decisions
+
+* **Async first** – every network I/O, DB call, and tool dispatch is non-blocking, allowing hundreds of concurrent WebSocket sessions.
+* **Stream-Everything** – `RealtimeEvent` transport makes the UI reactive and enables session replay/debugging.
+* **Token Budget Control** – proactive summarisation prevents expensive 120 k-token prompts.
+* **Isolation by Default** – each connection gets its own workspace dir; dangerous tools require explicit opt-in.
+
+---
+
+_End of Technical Overview_  
