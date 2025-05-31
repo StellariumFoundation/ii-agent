@@ -1,24 +1,22 @@
 # II-Agent Documentation Index
 
 Welcome to the official documentation hub for **II-Agent**.  
-Below you will find quick links to every major guide and reference. Start with the overview if you’re new, dive into architecture for internal details, or jump straight to usage and examples to run the agent yourself.
+Use the table below to jump straight to the guide you need.
 
-| Document | Purpose |
-|----------|---------|
-| [Technical Overview](technical_overview.md) | High-level tour of II-Agent’s goals, components, and feature set. |
-| [Architecture](architecture.md) | In-depth look at layers, data flow, and core subsystems. |
-| [Usage Guide](usage.md) | Installation, configuration, CLI & Web UI instructions, and advanced options. |
-| [Examples Cookbook](examples.md) | Hands-on tutorials demonstrating common workflows and custom extensions. |
-| [Contributing Guide](../CONTRIBUTING.md) | How to file issues, create pull requests, and adhere to project style. |
+| Category | Document | Purpose |
+|----------|----------|---------|
+| **Getting Started** | [Technical Overview](technical_overview.md) | High-level tour of goals, components, and feature set |
+| | [Usage Guide](usage.md) | Installation, configuration, CLI & Web UI instructions |
+| | [Examples Cookbook](examples.md) | Step-by-step tutorials demonstrating common workflows |
+| **Developer Resources** | [API Reference](api_reference.md) | Public Python API for agents, tools, LLM clients, and utilities |
+| | [Tool Development Guide](tool_development.md) | How to create, test, and register custom tools |
+| **Advanced Topics** | [Architecture](architecture.md) | In-depth look at layers, data flow, and core subsystems |
+| | [Performance & Benchmarks](performance_benchmarks.md) | GAIA results, cost analysis, and reproduction steps |
+| | [Security & Deployment](security_deployment.md) | Hardening, sandboxing, and production deployment patterns |
+| | [Roadmap](roadmap.md) | Short-, medium-, and long-term project plans |
+| **Community** | [Contributing Guide](../CONTRIBUTING.md) | How to file issues, create pull requests, and follow project style |
+| | [FAQ](faq.md) | Frequently asked questions and troubleshooting |
 
 ---
 
-## Getting Started
-
-1. Read the **Technical Overview** to understand what II-Agent can do.  
-2. Follow the **Usage Guide** to install dependencies, set environment variables, and launch the CLI or Web UI.  
-3. Explore the **Examples Cookbook** for step-by-step scenarios.  
-4. When you’re ready to dive deeper or build on top of II-Agent, study the **Architecture** document.  
-5. Found a bug or have an idea? Check the **Contributing Guide** and open a pull request—every contribution helps us build a better autonomous agent platform.
-
-Happy hacking!  
+Start with **Getting Started** if you are new, dig into **Developer Resources** to extend II-Agent, explore **Advanced Topics** for production deployments, and visit **Community** links to collaborate and shape the future of the project.
