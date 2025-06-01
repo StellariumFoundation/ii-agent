@@ -186,7 +186,6 @@ jobs:
         with:
           files: |
             ./ii_agent_desktop/dist/${{ steps.determine_artifact_dir.outputs.ARTIFACT_MAIN_DIR }}/${{ steps.artifact_details.outputs.artifact_sub_path }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
 ```
