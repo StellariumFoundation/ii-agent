@@ -29,10 +29,17 @@ export enum AgentEvent {
   ERROR = "error",
   SYSTEM = "system",
   PONG = "pong",
-  UPLOAD_SUCCESS = "upload_success",
+  // UPLOAD_SUCCESS = "upload_success", // Deprecated in favor of FILE_UPLOAD_SUCCESS for WebSocket uploads
   BROWSER_USE = "browser_use",
   FILE_EDIT = "file_edit",
   PROMPT_GENERATED = "prompt_generated",
+
+  // New event types for WebSocket File Upload & Neutralino Bridge
+  FILE_UPLOAD_REQUEST = "FILE_UPLOAD_REQUEST", // JS Client -> Server
+  FILE_UPLOAD_SUCCESS = "FILE_UPLOAD_SUCCESS", // Server -> JS Client
+  FILE_UPLOAD_FAILURE = "FILE_UPLOAD_FAILURE", // Server -> JS Client
+  NEUTRALINO_COMMAND = "NEUTRALINO_COMMAND",   // Server -> JS Client (for NeutralinoBridgeTool)
+  NEUTRALINO_RESULT = "NEUTRALINO_RESULT",     // JS Client -> Server (for NeutralinoBridgeTool)
 }
 
 export enum TOOL {
