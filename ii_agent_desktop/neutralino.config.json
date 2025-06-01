@@ -13,11 +13,20 @@
     "writeToLogFile": true
   },
   "nativeAllowList": [
-    "app.*",
-    "os.*",
-    "filesystem.*",
-    "storage.*",
-    "debug.*"
+    "app.exit",
+    "os.showNotification",
+    "os.showSaveDialog",
+    "os.showOpenDialog",
+    "filesystem.readFile",
+    "filesystem.readBinaryFile",
+    "filesystem.getPath",
+    "storage.setData",
+    "storage.getData",
+    "debug.log",
+    "extensions.spawnProcess",
+    "extensions.updateProcessInput",
+    "extensions.killProcess",
+    "events.*"
   ],
   "modes": {
     "window": {

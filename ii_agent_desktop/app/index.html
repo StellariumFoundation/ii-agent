@@ -23,6 +23,20 @@
 
     <h2>Raw Server Events (for debugging):</h2>
     <pre id="raw-events"></pre>
+    <hr>
+    <h2>Prototype 1: Stdio Echo Test</h2>
+    <button id="launch-stdio-echo-button">Launch Stdio Echo Extension</button>
+    <br>
+    <input type="text" id="stdio-input" placeholder='Enter JSON: e.g., {"message":"hello"}' style="width: 70%; margin-top: 5px;" />
+    <button id="send-stdio-button" style="margin-top: 5px;">Send to Stdio Echo</button>
+    <pre id="stdio-output" style="background-color: #222; color: #eee; padding: 10px; margin-top: 5px; height: 150px; overflow-y: auto; border-radius: 3px;">Stdio Output Will Appear Here...</pre>
+    <hr>
+    <h2>Prototype 2: Local WebSocket Echo Test</h2>
+    <button id="launch-local-ws-button">Launch Local WS Server</button>
+    <p>Status: <span id="local-ws-status">Not launched</span> Port: <span id="local-ws-port">N/A</span></p>
+    <input type="text" id="local-ws-input" placeholder='JSON: e.g., {"msg":"hi"}' style="width: 70%;" />
+    <button id="send-local-ws-button">Send to Local WS</button>
+    <pre id="local-ws-output" style="background-color: #222; color: #eee; padding: 10px; height: 100px; overflow-y: auto;"></pre>
   </div>
 
   <script src="js/neutralino.js"></script>

@@ -1,0 +1,36 @@
+# Core II-Agent and server dependencies
+fastapi
+uvicorn[standard]
+websockets # For the embedded server prototype and potentially for FastAPI's underlying use
+sqlalchemy
+psycopg2-binary # If PostgreSQL is an option (often good to list as a common DB driver)
+anthropic # The main LLM client
+openai # For other LLM models or tools
+google-cloud-aiplatform # For Vertex AI
+tiktoken # For token counting with OpenAI/Anthropic
+
+# Tooling and data handling
+pydantic[email] # For data validation and settings
+jsonschema # For tool input schema validation
+anyio # Used by FastAPI and for async operations
+python-dotenv # For .env file loading
+requests # For web requests by tools
+beautifulsoup4 # For HTML parsing by tools (e.g., visit_webpage)
+playwright # For browser automation tools (large dependency, consider if essential for initial self-contained version)
+PyPDF2 # If PDFTextExtractTool uses this (or pdfminer.six)
+pdfminer.six # Alternative for PDF extraction
+Pillow # For image processing if any tools do that
+tavily-python # If Tavily search is used
+google-api-python-client # If Google search/other Google APIs are used by tools
+newspaper3k # Often used for article scraping
+soundfile # If audio tools process raw audio files
+numpy # Often a dependency for media/data processing tools
+
+# Note: Specific versions are omitted for now. PyInstaller will typically bundle
+# the versions available in the environment where it's run.
+# This list should be reviewed and refined during the PyInstaller setup phase (Phase D)
+# as missing dependencies or hidden imports are discovered.
+# Dependencies for tools that are conditionally loaded (e.g., based on tool_args)
+# also need to be included if those tools are intended to be part of the bundled app.
+# For example, if specific database drivers beyond psycopg2 are needed, add them.
+# Ensure that when running PyInstaller, it's in an environment where these are installed.
