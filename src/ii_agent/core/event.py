@@ -22,6 +22,8 @@ class EventType(str, enum.Enum):
     FILE_EDIT = "file_edit"
     USER_MESSAGE = "user_message"
     PROMPT_GENERATED = "prompt_generated"
+    NEUTRALINO_COMMAND = "neutralino_command"
+    NEUTRALINO_RESULT = "neutralino_result"
 
 
 class RealtimeEvent(BaseModel):

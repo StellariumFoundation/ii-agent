@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>II-Agent Desktop</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">
+    <h1>II-Agent Desktop</h1>
+    <div id="status">Connecting to backend...</div>
+
+    <div id="chat-container">
+      <div id="messages">
+        <!-- Messages will be appended here -->
+      </div>
+      <div id="input-area">
+        <textarea id="query-input" placeholder="Enter your instruction..."></textarea>
+        <button id="send-button">Send</button>
+        <button id="upload-file-button">Upload File</button>
+      </div>
+    </div>
+
+    <h2>Raw Server Events (for debugging):</h2>
+    <pre id="raw-events"></pre>
+  </div>
+
+  <script src="js/neutralino.js"></script>
+  <script src="js/communication.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

@@ -14,6 +14,7 @@ from ii_agent.tools.base import ToolImplOutput, LLMTool
 from ii_agent.tools.utils import encode_image
 from ii_agent.db.manager import DatabaseManager
 from ii_agent.tools import AgentToolManager
+from ii_agent.tools.neutralino_bridge_tool import NeutralinoBridgeTool # Added import
 from ii_agent.utils.constants import COMPLETE_MESSAGE
 from ii_agent.utils.workspace_manager import WorkspaceManager
 
@@ -85,6 +86,13 @@ try breaking down the task into smaller steps. After call this tool to update or
             logger_for_agent_logs=logger_for_agent_logs,
             interactive_mode=interactive_mode,
         )
+
+        # ADD THIS BLOCK:
+        for tool_instance in self.tool_manager.get_tools():
+            if isinstance(tool_instance, NeutralinoBridgeTool):
+                tool_instance.agent_reference = self
+                self.logger_for_agent_logs.info(f"Set agent reference for {tool_instance.name}")
+        # END OF ADDED BLOCK
 
         self.logger_for_agent_logs = logger_for_agent_logs
         self.max_output_tokens = max_output_tokens_per_turn

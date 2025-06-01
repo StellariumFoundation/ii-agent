@@ -48,6 +48,7 @@ from ii_agent.tools.advanced_tools.image_gen_tool import ImageGenerateTool
 from ii_agent.tools.advanced_tools.pdf_tool import PdfTextExtractTool
 from ii_agent.tools.deep_research_tool import DeepResearchTool
 from ii_agent.tools.list_html_links_tool import ListHtmlLinksTool
+from .neutralino_bridge_tool import NeutralinoBridgeTool
 
 
 def get_system_tools(
@@ -159,6 +160,10 @@ def get_system_tools(
             pass
         elif memory_tool == "simple":
             tools.append(SimpleMemoryTool())
+
+    # Add NeutralinoBridgeTool - it will get its agent_reference set later by the agent itself
+    if tool_args and tool_args.get("neutralino_bridge", False): # Add a new tool_arg to enable it
+        tools.append(NeutralinoBridgeTool())
 
     return tools
 

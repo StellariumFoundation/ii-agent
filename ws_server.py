@@ -54,6 +54,7 @@ from ii_agent.llm.token_counter import TokenCounter
 from ii_agent.db.manager import DatabaseManager
 from ii_agent.tools import get_system_tools
 from ii_agent.prompts.system_prompt import SYSTEM_PROMPT, SYSTEM_PROMPT_WITH_SEQ_THINKING
+from ii_agent.tools.neutralino_bridge_tool import pending_neutralino_commands, neutralino_command_results # Added import
 
 MAX_OUTPUT_TOKENS_PER_TURN = 32000
 MAX_TURNS = 200
@@ -107,6 +108,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 content={
                     "message": "Connected to Agent WebSocket Server",
                     "workspace_path": str(workspace_manager.root),
+                    "session_uuid": str(session_uuid)
                 },
             ).model_dump()
         )
@@ -361,6 +363,26 @@ async def websocket_endpoint(websocket: WebSocket):
                                 content={"message": message},
                             ).model_dump()
                         )
+
+                elif msg_type == EventType.NEUTRALINO_RESULT.value:
+                    command_id = content.get("command_id")
+                    status = content.get("status") # Expected: 'success' or 'error'
+                    payload = content.get("payload") # Contains actual result or error message
+
+                    if command_id in pending_neutralino_commands:
+                        logger.info(f"Received NEUTRALINO_RESULT for command_id: {command_id}, status: {status}")
+                        neutralino_command_results[command_id] = {"status": status, "payload": payload}
+                        event_to_signal = pending_neutralino_commands.get(command_id)
+                        if event_to_signal:
+                            event_to_signal.set()
+                        else:
+                            # This case should ideally not happen if command_id is in pending_neutralino_commands
+                            logger.warning(f"NEUTRALINO_RESULT: Event object not found for command_id {command_id}, though it was pending.")
+                            # Clean up to prevent leaks if event object is missing for some reason
+                            pending_neutralino_commands.pop(command_id, None)
+                            neutralino_command_results.pop(command_id, None)
+                    else:
+                        logger.warning(f"Received NEUTRALINO_RESULT for unknown or already processed command_id: {command_id}")
 
                 else:
                     # Unknown message type
