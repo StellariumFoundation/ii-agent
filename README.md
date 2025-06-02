@@ -224,6 +224,40 @@ npm run dev
 
 3. Open your browser to http://localhost:3000
 
+## Serving Static Frontend with Python
+
+If you prefer to serve the frontend as static files using a simple Python server (after building it for static export):
+
+1.  **Configure for static export:**
+    Ensure your `frontend/next.config.ts` has the `output: 'export'` setting:
+    ```typescript
+    // frontend/next.config.ts
+    import type { NextConfig } from "next";
+
+    const nextConfig: NextConfig = {
+      output: "export", // Ensures static HTML/CSS/JS output
+    };
+
+    export default nextConfig;
+    ```
+
+2.  **Build the static frontend:**
+    Navigate to the `frontend` directory and run the build command:
+    ```bash
+    cd frontend
+    npm install # If you haven't already
+    npm run build
+    cd .. # Return to project root
+    ```
+    This will generate the static files in the `frontend/out` directory.
+
+3.  **Run the Python static server:**
+    From the project root directory, execute the `serve_static.py` script:
+    ```bash
+    python serve_static.py
+    ```
+    The server will typically start on `http://localhost:8000`.
+
 ## Project Structure
 
 - `cli.py`: Command-line interface
