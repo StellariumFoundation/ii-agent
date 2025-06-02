@@ -53,7 +53,7 @@ class NeutralinoBridgeTool(LLMTool):
     # And potentially the agent itself or a reference to the ws_server's command handling mechanism
     # For now, let's assume the agent instance is passed or accessible.
     # A cleaner way might be a dedicated dispatcher, but this is simpler for now.
-    agent_reference: Optional[AnthropicFC] = None
+    agent_reference: Optional[AnthropicFC] = None 
 
     def __init__(self, agent_ref: Optional[AnthropicFC] = None): # agent_ref is for direct injection, but we'll set agent_reference later
         super().__init__()
@@ -65,18 +65,18 @@ class NeutralinoBridgeTool(LLMTool):
     async def run_impl_async(self, tool_input: dict[str, Any], message_history: Optional[MessageHistory] = None) -> ToolImplOutput:
         action = tool_input.get("action")
         action_params = tool_input.get("action_params", {})
-
+        
         if not self.agent_reference or not hasattr(self.agent_reference, 'message_queue'):
             error_msg = "NeutralinoBridgeTool cannot send command: agent reference or message_queue not set."
             logger.error(error_msg)
             return ToolImplOutput(tool_output=error_msg, tool_result_message=error_msg, error=True)
 
         command_id = str(uuid.uuid4())
-
+        
         payload_to_frontend = {
             "command_id": command_id,
             "action": action,
-            "details": action_params
+            "details": action_params 
         }
 
         # Create an event for this command_id that we can wait on
@@ -109,7 +109,7 @@ class NeutralinoBridgeTool(LLMTool):
                     return ToolImplOutput(
                         tool_output=output_payload,
                         tool_result_message=f"Desktop action '{action}' failed with: {output_payload}",
-                        error=True
+                        error=True 
                     )
                 return ToolImplOutput(
                     tool_output=output_payload,

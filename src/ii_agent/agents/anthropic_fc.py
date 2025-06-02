@@ -86,7 +86,7 @@ try breaking down the task into smaller steps. After call this tool to update or
             logger_for_agent_logs=logger_for_agent_logs,
             interactive_mode=interactive_mode,
         )
-
+        
         # ADD THIS BLOCK:
         for tool_instance in self.tool_manager.get_tools():
             if isinstance(tool_instance, NeutralinoBridgeTool):

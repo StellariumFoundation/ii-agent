@@ -19,7 +19,7 @@ set -e
 PROJECT_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 # Python backend paths
 PY_BACKEND_SPEC_FILE="ii_agent_backend.spec"
-PY_BACKEND_DIST_DIR="$PROJECT_ROOT/dist"
+PY_BACKEND_DIST_DIR="$PROJECT_ROOT/dist" 
 PY_BACKEND_OUTPUT_NAME="ii_agent_core_service" # Must match 'name' in COLLECT in the .spec file
 # React frontend paths
 REACT_APP_DIR="$PROJECT_ROOT/frontend"
@@ -29,7 +29,7 @@ NEUTRINO_APP_DIR="$PROJECT_ROOT/ii_agent_desktop"
 NEUTRINO_APP_CONTENT_DIR="$NEUTRINO_APP_DIR/app"
 NEUTRINO_APP_JS_DIR="$NEUTRINO_APP_CONTENT_DIR/js"     # Target for app_bootstrap.js, e.g., app/js/
 NEUTRINO_PYTHON_BIN_DIR="$NEUTRINO_APP_CONTENT_DIR/bin"
-NEUTRINO_PYTHON_EXEC_TARGET_DIR="$NEUTRINO_PYTHON_BIN_DIR/$PY_BACKEND_OUTPUT_NAME"
+NEUTRINO_PYTHON_EXEC_TARGET_DIR="$NEUTRINO_PYTHON_BIN_DIR/$PY_BACKEND_OUTPUT_NAME" 
 
 # Source location of our bootstrap script (created in a previous step)
 APP_BOOTSTRAP_JS_SOURCE="$PROJECT_ROOT/ii_agent_desktop/app/js/app_bootstrap.js"
@@ -68,7 +68,7 @@ if [ $? -ne 0 ]; then echo "ERROR: React npm/yarn install failed." >&2; exit 1; 
 echo "Building React frontend (npm run build or export)..."
 if npm run build --if-present; then
     echo "React build script 'build' successful. Output expected in $REACT_BUILD_OUTPUT_DIR."
-elif npm run export --if-present; then
+elif npm run export --if-present; then 
     echo "React build script 'export' successful."
     if [ -d "$REACT_APP_DIR/out" ]; then
         REACT_BUILD_OUTPUT_DIR="$REACT_APP_DIR/out"
@@ -89,13 +89,13 @@ mkdir -p "$NEUTRINO_PYTHON_BIN_DIR" # app/bin/
 mkdir -p "$NEUTRINO_APP_JS_DIR"     # app/js/
 
 echo "Cleaning Neutralino app content directory ($NEUTRINO_APP_CONTENT_DIR), preserving 'bin/'..."
-shopt -s extglob
+shopt -s extglob 
 cd "$NEUTRINO_APP_CONTENT_DIR"
 rm -rf !(bin) # Deletes everything in app/ except the 'bin' folder. This means app/js is deleted if it existed.
 cd "$PROJECT_ROOT"
-shopt -u extglob
+shopt -u extglob 
 # Re-create app/js after cleaning, because React build might not create it.
-mkdir -p "$NEUTRINO_APP_JS_DIR"
+mkdir -p "$NEUTRINO_APP_JS_DIR" 
 
 echo "Copying React build from $REACT_BUILD_OUTPUT_DIR to $NEUTRINO_APP_CONTENT_DIR/..."
 cp -R "$REACT_BUILD_OUTPUT_DIR"/* "$NEUTRINO_APP_CONTENT_DIR/"
@@ -120,7 +120,7 @@ mkdir -p "$NEUTRINO_PYTHON_EXEC_TARGET_DIR" # Ensure this specific folder exists
 echo "Copying Python backend from $PY_BACKEND_SOURCE_PATH/* to $NEUTRINO_PYTHON_EXEC_TARGET_DIR/..."
 rsync -a --delete "$PY_BACKEND_SOURCE_PATH/" "$NEUTRINO_PYTHON_EXEC_TARGET_DIR/"
 
-PYTHON_EXEC_IN_NEUTRINO_BASE="$NEUTRINO_PYTHON_EXEC_TARGET_DIR/$PY_BACKEND_OUTPUT_NAME"
+PYTHON_EXEC_IN_NEUTRINO_BASE="$NEUTRINO_PYTHON_EXEC_TARGET_DIR/$PY_BACKEND_OUTPUT_NAME" 
 if [ ! -f "$PYTHON_EXEC_IN_NEUTRINO_BASE" ] && [ ! -f "$PYTHON_EXEC_IN_NEUTRINO_BASE.exe" ]; then
     echo "ERROR: Failed to copy Python executable '$PY_BACKEND_OUTPUT_NAME' to $NEUTRINO_PYTHON_EXEC_TARGET_DIR" >&2
     exit 1
@@ -131,7 +131,7 @@ echo ""
 echo "--- Step 5: Building Neutralinojs Application ---"
 cd "$NEUTRINO_APP_DIR"
 echo "Running 'neu update' to ensure latest client library..."
-neu update
+neu update 
 
 NEUTRINO_CLIENT_LIB_UPDATED_SOURCE="$NEUTRINO_APP_DIR/resources/js/neutralino.js"
 NEUTRINO_CLIENT_LIB_TARGET_IN_APP="$NEUTRINO_APP_CONTENT_DIR/neutralino.js" # Target is app/neutralino.js

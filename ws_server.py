@@ -363,12 +363,12 @@ async def websocket_endpoint(websocket: WebSocket):
                                 content={"message": message},
                             ).model_dump()
                         )
-
+                
                 elif msg_type == EventType.NEUTRALINO_RESULT.value:
                     command_id = content.get("command_id")
                     status = content.get("status") # Expected: 'success' or 'error'
                     payload = content.get("payload") # Contains actual result or error message
-
+                    
                     if command_id in pending_neutralino_commands:
                         logger.info(f"Received NEUTRALINO_RESULT for command_id: {command_id}, status: {status}")
                         neutralino_command_results[command_id] = {"status": status, "payload": payload}

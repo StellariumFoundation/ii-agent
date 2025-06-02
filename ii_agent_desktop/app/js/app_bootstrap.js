@@ -24,19 +24,19 @@ if (!window.PYTHON_BACKEND_READY) {
         }
         return; // Stop execution of this bootstrap script
     }
-
+    
 
     // Declare globals for React app to pick up
     window.NL_EMBEDDED_PYTHON_PORT = null;
-    window.NL_APP_DATA_PATH = null;
-    window.NL_PYTHON_WORKSPACE_ROOT = null;
+    window.NL_APP_DATA_PATH = null; 
+    window.NL_PYTHON_WORKSPACE_ROOT = null; 
     window.NL_DEVICE_ID = null; // For React app to use in WebSocket connection
-
+    
     let pythonProcess = null;
 
     // Simple status update for pre-React UI (if any)
     function bootstrapUpdateStatus(message, isError = false) {
-        const statusEl = document.getElementById('bootstrap-status');
+        const statusEl = document.getElementById('bootstrap-status'); 
         if (statusEl) {
             const p = document.createElement('p');
             p.style.color = isError ? 'red' : 'inherit';
@@ -58,16 +58,16 @@ if (!window.PYTHON_BACKEND_READY) {
             if (storedData && typeof storedData === 'object' && storedData.id) return storedData.id;
             if (typeof storedData === 'string') return storedData; // Older format if any
         } catch (err) { console.warn("Bootstrap: No stored device ID or error accessing storage (normal on first run)."); }
-
+        
         const newId = 'device_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
-        try {
-            await Neutralino.storage.setData(key, { id: newId });
+        try { 
+            await Neutralino.storage.setData(key, { id: newId }); 
             bootstrapUpdateStatus(`Generated and stored new device ID: ${newId}`);
-        }
+        } 
         catch (err) { console.error("Bootstrap: Error saving new device ID:", err); }
         return newId;
     }
-
+    
     window.NL_DEVICE_ID = await getOrStoreDeviceId_Bootstrap();
     bootstrapUpdateStatus(`Device ID for WebSocket: ${window.NL_DEVICE_ID}`);
 
@@ -75,15 +75,15 @@ if (!window.PYTHON_BACKEND_READY) {
 
     try {
         window.NL_APP_DATA_PATH = await Neutralino.filesystem.getPath('data');
-        window.NL_PYTHON_WORKSPACE_ROOT = `${window.NL_APP_DATA_PATH}/ii_agent_workspace_data`;
+        window.NL_PYTHON_WORKSPACE_ROOT = `${window.NL_APP_DATA_PATH}/ii_agent_workspace_data`; 
         await Neutralino.filesystem.createDirectory(window.NL_PYTHON_WORKSPACE_ROOT); // Ensure base workspace dir exists
 
         const executableName = 'ii_agent_core_service'; // Matches PyInstaller spec output name
-        const command = (NL_OS === 'Windows' ?
-            `./bin/${executableName}/${executableName}.exe` :
-            `./bin/${executableName}/${executableName}`) +
+        const command = (NL_OS === 'Windows' ? 
+            `./bin/${executableName}/${executableName}.exe` : 
+            `./bin/${executableName}/${executableName}`) + 
             ` "${window.NL_PYTHON_WORKSPACE_ROOT}"`; // Pass workspace root as CLI argument
-
+        
         bootstrapUpdateStatus(`Spawning Python: ${command.replace(window.NL_PYTHON_WORKSPACE_ROOT, "{workspace_root}")}`);
 
         // Clear any stale listeners from previous launches in same session (if page reloaded)
@@ -107,7 +107,7 @@ if (!window.PYTHON_BACKEND_READY) {
 
     function handlePythonStdOutForBootstrap(evt) {
         if (!pythonProcess || evt.detail.id !== pythonProcess.id) return; // Not our process
-
+        
         const data = evt.detail.data;
         // Log all stdout for debugging until port is found
         if (!window.NL_EMBEDDED_PYTHON_PORT) { // Only log verbosely if port not yet found
@@ -143,15 +143,15 @@ if (!window.PYTHON_BACKEND_READY) {
         const exitCode = evt.detail.data;
         const exitMsg = `Python backend (PID ${pythonProcess.id}) exited with code: ${exitCode}. React app may not function.`;
         bootstrapUpdateStatus(exitMsg, true);
-
+        
         Neutralino.events.off("extensionStdOut", handlePythonStdOutForBootstrap);
         Neutralino.events.off("extensionStdErr", handlePythonStdErrForBootstrap);
         Neutralino.events.off("spawnedProcess", handlePythonExitForBootstrap);
-
+        
         pythonProcess = null;
         const previousPort = window.NL_EMBEDDED_PYTHON_PORT;
-        window.NL_EMBEDDED_PYTHON_PORT = null;
-
+        window.NL_EMBEDDED_PYTHON_PORT = null; 
+        
         // If PYTHON_BACKEND_READY was not resolved yet (e.g. process exited before printing port)
         // or if it was resolved as success but process exited immediately.
         if (window.resolvePythonBackendReady) {
@@ -160,7 +160,7 @@ if (!window.PYTHON_BACKEND_READY) {
              window.resolvePythonBackendReady({ success: false, error: `Python process exited prematurely with code ${exitCode}. Port was ${previousPort || 'not captured'}.`, deviceId: window.NL_DEVICE_ID });
         }
     }
-
+    
     // Cleanup on window close
     Neutralino.events.on("windowClose", async () => {
         bootstrapUpdateStatus("windowClose event: Cleaning up Python process...");

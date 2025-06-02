@@ -4,7 +4,7 @@
 Neutralino.init();
 
 // Global variable for session UUID (set by communication.js via handleRealtimeEvent)
-let currentSessionUUID = null;
+let currentSessionUUID = null; 
 
 // UI Elements (main chat) - Ensure these IDs match your index.html
 const queryInput = document.getElementById('query-input');
@@ -12,7 +12,7 @@ const sendButton = document.getElementById('send-button');
 const messagesDiv = document.getElementById('messages');
 const rawEventsDiv = document.getElementById('raw-events'); // Debug log
 const statusDiv = document.getElementById('status');
-const uploadFileButton = document.getElementById('upload-file-button');
+const uploadFileButton = document.getElementById('upload-file-button'); 
 
 // Event Listeners for main chat
 if(sendButton) {
@@ -24,7 +24,7 @@ if(sendButton) {
 if(queryInput) {
     queryInput.addEventListener('keypress', (event) => {
     if (event.key === 'Enter' && !event.shiftKey) {
-        event.preventDefault();
+        event.preventDefault(); 
         sendChatMessage();
     }
     });
@@ -33,7 +33,7 @@ if(queryInput) {
 }
 
 if(uploadFileButton) {
-    uploadFileButton.addEventListener('click', selectAndUploadFile);
+    uploadFileButton.addEventListener('click', selectAndUploadFile); 
 } else {
     console.error("Upload file button not found.");
 }
@@ -43,11 +43,11 @@ function sendChatMessage() {
     const queryText = queryInput.value.trim();
     if (queryText) {
       if (window.IIA_Desktop_EmbeddedComms && window.IIA_Desktop_EmbeddedComms.sendMessageToServer) {
-        window.IIA_Desktop_EmbeddedComms.sendMessageToServer({
-            type: 'query',
-            content: { text: queryText, resume: false, files: [] }
+        window.IIA_Desktop_EmbeddedComms.sendMessageToServer({ 
+            type: 'query', 
+            content: { text: queryText, resume: false, files: [] } 
         });
-        appendMessage('user-message', `You: ${queryText}`);
+        appendMessage('user-message', `You: ${queryText}`); 
         queryInput.value = '';
       } else {
         updateStatus("ERROR: Communication module not ready or sendMessageToServer not found.", true);
@@ -67,7 +67,7 @@ ${JSON.stringify(eventData, null, 2)}`;
 function appendMessage(type, textOrHtml, isHtml = false) {
   if(!messagesDiv) { console.error("Messages div not found for appendMessage"); return; }
   const messageElement = document.createElement('div');
-  messageElement.classList.add('message', type);
+  messageElement.classList.add('message', type); 
   if (isHtml) {
     messageElement.innerHTML = textOrHtml;
   } else {
@@ -97,7 +97,7 @@ function arrayBufferToBase64(buffer) {
 
 // Modified selectAndUploadFile for WebSocket upload
 async function selectAndUploadFile() {
-  if (!currentSessionUUID) {
+  if (!currentSessionUUID) { 
     updateStatus('Error: Session not established with local backend. Cannot upload file.', true);
     try { await Neutralino.os.showNotification('Error', 'Session not established. Please ensure backend is running.'); } catch(e){ console.error(e); }
     return;
@@ -116,11 +116,11 @@ async function selectAndUploadFile() {
 
       let fileContent; // This will be ArrayBuffer for binary, string for text
       let contentToSend; // This will be base64 data URL for binary, or plain text for text
-
+      
       const fileExtension = fileName.split('.').pop().toLowerCase();
       // Expanded list of common text extensions
       const textExtensions = ['txt', 'md', 'json', 'py', 'js', 'html', 'css', 'csv', 'xml', 'log', 'sh', 'java', 'c', 'cpp', 'h', 'hpp', 'rb', 'php', 'pl', 'yaml', 'ini', 'toml', 'rtf', 'tex', 'sql'];
-
+      
       if (textExtensions.includes(fileExtension)) {
         try {
             fileContent = await Neutralino.filesystem.readFile(filePath); // Reads as string
@@ -142,7 +142,7 @@ async function selectAndUploadFile() {
         fileContent = await Neutralino.filesystem.readBinaryFile(filePath); // ArrayBuffer
         contentToSend = `data:application/octet-stream;base64,${arrayBufferToBase64(fileContent)}`;
       }
-
+      
       const uploadRequestMessage = {
         type: "FILE_UPLOAD_REQUEST", // Matches EventType in Python
         content: {
@@ -150,7 +150,7 @@ async function selectAndUploadFile() {
           fileContent: contentToSend, // Base64 data URL
         }
       };
-
+      
       if (window.IIA_Desktop_EmbeddedComms && window.IIA_Desktop_EmbeddedComms.sendMessageToServer) {
         window.IIA_Desktop_EmbeddedComms.sendMessageToServer(uploadRequestMessage);
         updateStatus(`Upload request for ${fileName} sent. Waiting for server response...`);
@@ -174,7 +174,7 @@ function handleRealtimeEvent(eventData) {
     const content = eventData.content;
 
     switch (type) {
-        case 'user_message':
+        case 'user_message': 
             appendMessage('user-message', `User (from server): ${content.text}`);
             break;
         case 'agent_response':
@@ -193,8 +193,8 @@ function handleRealtimeEvent(eventData) {
             break;
         case 'tool_result':
             let resultText = content.result;
-            try {
-                if (typeof resultText === 'string') { resultText = JSON.stringify(JSON.parse(resultText), null, 2); }
+            try { 
+                if (typeof resultText === 'string') { resultText = JSON.stringify(JSON.parse(resultText), null, 2); } 
                 else if (typeof resultText === 'object') { resultText = JSON.stringify(resultText, null, 2); }
             } catch(e) { /* not JSON, display as is */ }
             appendMessage('tool-result-message', `<strong>Tool Result: ${content.tool_name}</strong><pre>${resultText}</pre>`, true);
@@ -218,10 +218,10 @@ function handleRealtimeEvent(eventData) {
             updateStatus("Agent initialized and ready.");
             appendMessage('system-message', 'Agent initialized and ready.');
             break;
-        case 'NEUTRALINO_COMMAND':
-            executeNeutralinoCommand(content);
+        case 'NEUTRALINO_COMMAND': 
+            executeNeutralinoCommand(content); 
             break;
-
+        
         // New cases for File Upload (Task 10.1)
         case 'FILE_UPLOAD_SUCCESS': // Matches EventType in Python
             updateStatus(`File '${content.originalName}' uploaded to '${content.filePathInWorkspace}'.`, false);
@@ -262,7 +262,7 @@ async function executeNeutralinoCommand(commandData) {
       default: console.error("Unknown Neutralino command action:", action); throw new Error(`Unsupported Neutralino action: ${action}`);
     }
   } catch (err) { console.error(`Error executing Neutralino action '${action}':`, err); payload = { message: err.message, details: err.toString() }; }
-
+  
   if (window.IIA_Desktop_EmbeddedComms && window.IIA_Desktop_EmbeddedComms.sendMessageToServer) {
     sendNeutralinoResult(command_id, status, payload);
   } else {
@@ -272,7 +272,7 @@ async function executeNeutralinoCommand(commandData) {
 
 function sendNeutralinoResult(command_id, status, result_payload) {
   const messageObject = { type: "NEUTRALINO_RESULT", content: { command_id: command_id, status: status, payload: result_payload } };
-  window.IIA_Desktop_EmbeddedComms.sendMessageToServer(messageObject);
+  window.IIA_Desktop_EmbeddedComms.sendMessageToServer(messageObject); 
   appendMessage('system-message', `Sent result for NeutralinoBridge action ${command_id} (status: ${status})`);
 }
 

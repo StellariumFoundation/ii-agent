@@ -3,7 +3,7 @@ name: Build and Release II-Agent Desktop
 on:
   push:
     tags:
-      - 'v*'
+      - 'v*' 
   workflow_dispatch:
 
 jobs:
@@ -14,8 +14,8 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        # node-version: [20.x]
-        # python-version: ['3.10']
+        # node-version: [20.x] 
+        # python-version: ['3.10'] 
 
     steps:
       - name: Checkout code
@@ -24,12 +24,12 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '20' 
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.10' 
 
       - name: Install Python dependencies
         run: |
@@ -62,11 +62,11 @@ jobs:
           echo "---------------------------------------------------------------------"
 
       - name: Run the main build script
-        shell: bash
+        shell: bash 
         run: |
           chmod +x ./build_desktop.sh
           ./build_desktop.sh
-
+      
       - name: Determine Artifact Directory Name (within ./ii_agent_desktop/dist/)
         id: determine_artifact_dir
         shell: bash
@@ -90,7 +90,7 @@ jobs:
           fi
           echo "ARTIFACT_MAIN_DIR=${ARTIFACT_MAIN_DIR_CANDIDATE}" >> $GITHUB_OUTPUT
           echo "Determined artifact main directory relative to dist/: ${ARTIFACT_MAIN_DIR_CANDIDATE}"
-
+        
       - name: Prepare Release Artifact Name and Path
         id: artifact_details
         shell: bash
@@ -100,11 +100,11 @@ jobs:
         run: |
           APP_NAME_VERSION_OS="ii-agent-desktop-${RELEASE_TAG}-${{ matrix.os }}"
           ARTIFACT_PATH_IN_DIST="./ii_agent_desktop/dist" # Path to dist from repo root
-
+          
           cd "$ARTIFACT_PATH_IN_DIST/$ARTIFACT_MAIN_DIR" # cd into the versioned dir or '.' (dist itself)
 
           ACTUAL_ARTIFACT_NAME=""
-
+          
           if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
             # Neutralino typically produces a .exe installer or a portable .zip / folder
             # For portable, it's often <appname>-win_x64.exe inside the ARTIFACT_MAIN_DIR or a subfolder
@@ -120,7 +120,7 @@ jobs:
                 ACTUAL_ARTIFACT_NAME="${APP_NAME_VERSION_OS}.zip"
             else # Fallback: zip current dir contents (which is ARTIFACT_MAIN_DIR)
                 echo "Windows: No specific .exe or portable folder found, zipping current directory."
-                zip -r "${APP_NAME_VERSION_OS}.zip" .
+                zip -r "${APP_NAME_VERSION_OS}.zip" . 
                 ACTUAL_ARTIFACT_NAME="${APP_NAME_VERSION_OS}.zip"
             fi
           elif [[ "${{ matrix.os }}" == "macos-latest" ]]; then
@@ -133,7 +133,7 @@ jobs:
                 # Zip the .app bundle
                 zip -r "${APP_BUNDLE_NAME}.zip" "$APP_BUNDLE_NAME"
                 ACTUAL_ARTIFACT_NAME="${APP_BUNDLE_NAME}.zip"
-            else
+            else 
                 echo "MacOS: No .app or .dmg found, zipping current directory."
                 zip -r "${APP_NAME_VERSION_OS}.zip" .
                 ACTUAL_ARTIFACT_NAME="${APP_NAME_VERSION_OS}.zip"
@@ -146,46 +146,45 @@ jobs:
             LINUX_EXEC_NAME=$(ls ii-agent-desktop-linux_x64 2>/dev/null | head -n 1) # Check if it's an executable file
             LINUX_DIR_NAME="ii-agent-desktop-linux_x64" # The folder neu might create
 
-            if [ -n "$APPIMAGE_NAME" ]; then ACTUAL_ARTIFACT_NAME="$APPIMAGE_NAME";
-            elif [ -n "$DEB_NAME" ]; then ACTUAL_ARTIFACT_NAME="$DEB_NAME";
-            elif [ -n "$TARGZ_NAME" ]; then ACTUAL_ARTIFACT_NAME="$TARGZ_NAME";
+            if [ -n "$APPIMAGE_NAME" ]; then ACTUAL_ARTIFACT_NAME="$APPIMAGE_NAME"; 
+            elif [ -n "$DEB_NAME" ]; then ACTUAL_ARTIFACT_NAME="$DEB_NAME"; 
+            elif [ -n "$TARGZ_NAME" ]; then ACTUAL_ARTIFACT_NAME="$TARGZ_NAME"; 
             elif [ -f "$LINUX_DIR_NAME/$LINUX_DIR_NAME" ]; then # Executable inside folder
-                zip -r "${LINUX_DIR_NAME}.zip" "$LINUX_DIR_NAME"; ACTUAL_ARTIFACT_NAME="${LINUX_DIR_NAME}.zip";
+                zip -r "${LINUX_DIR_NAME}.zip" "$LINUX_DIR_NAME"; ACTUAL_ARTIFACT_NAME="${LINUX_DIR_NAME}.zip"; 
             elif [ -f "$LINUX_DIR_NAME" ]; then # Direct executable if ARTIFACT_MAIN_DIR was '.' and exec is in dist/
-                 zip -r "${LINUX_DIR_NAME}.zip" "$LINUX_DIR_NAME"; ACTUAL_ARTIFACT_NAME="${LINUX_DIR_NAME}.zip";
-            else
+                 zip -r "${LINUX_DIR_NAME}.zip" "$LINUX_DIR_NAME"; ACTUAL_ARTIFACT_NAME="${LINUX_DIR_NAME}.zip"; 
+            else 
                 echo "Linux: No specific artifact type found, zipping current directory."
-                zip -r "${APP_NAME_VERSION_OS}.zip" .; ACTUAL_ARTIFACT_NAME="${APP_NAME_VERSION_OS}.zip";
+                zip -r "${APP_NAME_VERSION_OS}.zip" .; ACTUAL_ARTIFACT_NAME="${APP_NAME_VERSION_OS}.zip"; 
             fi
           fi
-
+          
           if [ -z "$ACTUAL_ARTIFACT_NAME" ]; then
             echo "::error::Could not determine or create specific artifact for ${{ matrix.os }}. Zipping $PWD as fallback."
             # Current directory is $ARTIFACT_PATH_IN_DIST/$ARTIFACT_MAIN_DIR
             zip -r "${APP_NAME_VERSION_OS}.zip" . # Zip the content of ARTIFACT_MAIN_DIR
             echo "artifact_filename=${APP_NAME_VERSION_OS}.zip" >> $GITHUB_OUTPUT
             # Path from dist/ARTIFACT_MAIN_DIR to the zip file (which is just the zip file itself in this case)
-            echo "artifact_sub_path=${APP_NAME_VERSION_OS}.zip" >> $GITHUB_OUTPUT
+            echo "artifact_sub_path=${APP_NAME_VERSION_OS}.zip" >> $GITHUB_OUTPUT 
           else
             echo "artifact_filename=${ACTUAL_ARTIFACT_NAME}" >> $GITHUB_OUTPUT
             echo "artifact_sub_path=${ACTUAL_ARTIFACT_NAME}" >> $GITHUB_OUTPUT # Path relative to ARTIFACT_MAIN_DIR
             echo "Determined/Created artifact: ${ACTUAL_ARTIFACT_NAME} in $PWD"
           fi
-
+        
       - name: Upload Artifact for Workflow Run
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.artifact_details.outputs.artifact_filename }}
           # Path is from repo root: ./ii_agent_desktop/dist/ARTIFACT_MAIN_DIR/ACTUAL_ARTIFACT_NAME
           path: ./ii_agent_desktop/dist/${{ steps.determine_artifact_dir.outputs.ARTIFACT_MAIN_DIR }}/${{ steps.artifact_details.outputs.artifact_sub_path }}
-          if-no-files-found: error
+          if-no-files-found: error 
 
       - name: Create GitHub Release and Upload Assets
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            ./ii_agent_desktop/dist/${{ steps.determine_artifact_dir.outputs.ARTIFACT_MAIN_DIR }}/${{ steps.artifact_details.outputs.artifact_sub_path }}
+          files: ./ii_agent_desktop/dist/${{ steps.determine_artifact_dir.outputs.ARTIFACT_MAIN_DIR }}/${{ steps.artifact_details.outputs.artifact_sub_path }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
 ```

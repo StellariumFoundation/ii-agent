@@ -20,14 +20,14 @@
     "filesystem.readFile",
     "filesystem.readBinaryFile",
     "filesystem.getPath",
-    "filesystem.createDirectory",
+    "filesystem.createDirectory", 
     "storage.setData",
     "storage.getData",
     "debug.log",
     "extensions.spawnProcess",
     "extensions.updateProcessInput",
     "extensions.killProcess",
-    "events.*"
+    "events.*" 
   ],
   "modes": {
     "window": {

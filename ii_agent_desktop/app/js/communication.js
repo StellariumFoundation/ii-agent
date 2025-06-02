@@ -15,7 +15,7 @@ async function getOrStoreDeviceId() {
     let storedData = await Neutralino.storage.getData(key);
     if (storedData && typeof storedData === 'string' && storedData.startsWith('desktop_device_')) {
         return storedData;
-    } else if (storedData && storedData.id) {
+    } else if (storedData && storedData.id) { 
         return storedData.id;
     }
   } catch (err) {
@@ -31,25 +31,25 @@ async function getOrStoreDeviceId() {
 }
 
 // Main function to initialize communication with the embedded Python backend
-async function initCommunication() {
+async function initCommunication() { 
   const deviceId = await getOrStoreDeviceId(); // Needed for WebSocket query param
   updateStatus("Starting embedded Python backend...", false); // updateStatus is in main.js
 
   try {
     const appDataPath = await Neutralino.filesystem.getPath('data');
     // Define a root directory within Neutralino's data path for all app's backend data (workspaces, logs)
-    const backendDataRootPath = `${appDataPath}/ii_agent_backend_data`;
+    const backendDataRootPath = `${appDataPath}/ii_agent_backend_data`; 
     await Neutralino.filesystem.createDirectory(backendDataRootPath); // Ensure it exists
 
     // Command to execute: path to executable + workspace_path argument
     // The executable is expected to be in app/bin/ii_agent_core_service/ relative to resourcesPath (which is app/)
     const executableName = 'ii_agent_core_service'; // Must match PyInstaller output app_name
-    const commandBase = NL_OS === 'Windows' ?
-        `./bin/${executableName}/${executableName}.exe` :
+    const commandBase = NL_OS === 'Windows' ? 
+        `./bin/${executableName}/${executableName}.exe` : 
         `./bin/${executableName}/${executableName}`;
-
+    
     const command = `${commandBase} "${backendDataRootPath}"`;
-
+    
     console.log(`Spawning Python backend with command: ${command}`);
     // Using appendMessage from main.js to log to UI
     appendMessage('system-message', `Spawning Python backend...`);
@@ -77,10 +77,10 @@ async function initCommunication() {
 }
 
 function handlePythonStdOutForPort(evt) {
-    if (!pythonProcess || evt.detail.id !== pythonProcess.id || pythonServerPort) return;
+    if (!pythonProcess || evt.detail.id !== pythonProcess.id || pythonServerPort) return; 
     const data = evt.detail.data;
     // Log all stdout from Python process until port is found, for debugging
-    appendMessage('system-message', `[PY STDOUT]: ${data.trim()}`);
+    appendMessage('system-message', `[PY STDOUT]: ${data.trim()}`); 
 
     if (data.startsWith("PORT:")) {
         pythonServerPort = parseInt(data.substring(5).trim(), 10);
@@ -103,7 +103,7 @@ function handlePythonStdErr(evt) {
         // These are logs from the Python script's stderr
         appendMessage('system-message', `[PY STDERR]: ${evt.detail.data.trim()}`);
         // Don't necessarily set main status to error for all stderr, could be debug info
-        // updateStatus(`Python backend: ${evt.detail.data.trim()}`, false);
+        // updateStatus(`Python backend: ${evt.detail.data.trim()}`, false); 
     }
 }
 
@@ -112,7 +112,7 @@ function handlePythonExit(evt) {
         appendMessage('error-message', `Python backend (PID ${pythonProcess.id}) exited with code: ${evt.detail.data}.`);
         updateStatus("Python backend exited.", true);
         if (mainWebSocket) mainWebSocket.close(); // Close WebSocket connection if it exists
-
+        
         // Clean up event listeners for the exited process
         Neutralino.events.off("extensionStdOut", handlePythonStdOutForPort);
         Neutralino.events.off("extensionStdErr", handlePythonStdErr);
@@ -130,19 +130,19 @@ async function connectToLocalPythonWs(port) {
         return;
     }
 
-    const deviceId = await getOrStoreDeviceId();
-    const wsUrl = `ws://localhost:${port}?device_id=${deviceId}`;
+    const deviceId = await getOrStoreDeviceId(); 
+    const wsUrl = `ws://localhost:${port}?device_id=${deviceId}`; 
     appendMessage('system-message', `Connecting to main WebSocket: ${wsUrl}`);
     mainWebSocket = new WebSocket(wsUrl);
 
     mainWebSocket.onopen = () => {
         updateStatus('Connected to II-Agent backend. Initializing agent...', false);
-        sendMessageToServer({
+        sendMessageToServer({ 
             type: "init_agent", // Corresponds to EventType.INIT_AGENT in Python
             content: {
                 model_name: "claude-3-haiku-20240307", // Example model
-                tool_args: {
-                    sequential_thinking: true,
+                tool_args: { 
+                    sequential_thinking: true, 
                     browser: false, // Browser tool likely won't work easily with embedded Python
                     neutralino_bridge: true // Enable the bridge tool
                 }
@@ -170,7 +170,7 @@ async function connectToLocalPythonWs(port) {
         // More detailed errors are usually logged to the browser console.
         let errorMessage = 'WebSocket connection error. See browser console for details.';
         if (errorEvent.message) errorMessage = errorEvent.message; // Some environments might provide a message
-
+        
         appendMessage('error-message', `Main WebSocket Error: ${errorMessage}`);
         updateStatus(`Main WebSocket Error: ${errorMessage}`, true);
         console.error("Main WebSocket Error:", errorEvent);
@@ -179,14 +179,14 @@ async function connectToLocalPythonWs(port) {
     mainWebSocket.onclose = (event) => {
         appendMessage('system-message', `Disconnected from II-Agent backend. Code: ${event.code}, Reason: ${event.reason || 'N/A'}`);
         updateStatus("Disconnected from II-Agent backend.", true);
-        mainWebSocket = null;
+        mainWebSocket = null; 
         // pythonServerPort = null; // Keep port if process might still be running, or nullify if process also exited.
                                  // handlePythonExit handles nullifying pythonServerPort.
     };
 }
 
 // This function is intended to be called by main.js
-function sendMessageToServer(messageObject) {
+function sendMessageToServer(messageObject) { 
     if (mainWebSocket && mainWebSocket.readyState === WebSocket.OPEN) {
         mainWebSocket.send(JSON.stringify(messageObject));
         logRawEvent({ SENT_TO_LOCAL_PY: messageObject }); // logRawEvent is in main.js
@@ -206,7 +206,7 @@ async function cleanupPythonProcess() {
         try {
             appendMessage('system-message', `Terminating Python backend (PID: ${pythonProcess.id})...`);
             await Neutralino.extensions.killProcess(pythonProcess.id);
-            // appendMessage('system-message', 'Python backend process kill signal sent.');
+            // appendMessage('system-message', 'Python backend process kill signal sent.'); 
             // handlePythonExit will confirm actual exit.
         } catch (err) {
             appendMessage('error-message', `Error terminating Python backend: ${err.message || JSON.stringify(err)}`);

@@ -48,7 +48,7 @@ from ii_agent.tools.advanced_tools.image_gen_tool import ImageGenerateTool
 from ii_agent.tools.advanced_tools.pdf_tool import PdfTextExtractTool
 from ii_agent.tools.deep_research_tool import DeepResearchTool
 from ii_agent.tools.list_html_links_tool import ListHtmlLinksTool
-from .neutralino_bridge_tool import NeutralinoBridgeTool
+from .neutralino_bridge_tool import NeutralinoBridgeTool 
 
 
 def get_system_tools(

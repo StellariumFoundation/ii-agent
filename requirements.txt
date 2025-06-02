@@ -1,6 +1,6 @@
 # Core II-Agent and server dependencies
 fastapi
-uvicorn[standard]
+uvicorn[standard] 
 websockets # For the embedded server prototype and potentially for FastAPI's underlying use
 sqlalchemy
 psycopg2-binary # If PostgreSQL is an option (often good to list as a common DB driver)

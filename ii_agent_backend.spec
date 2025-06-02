@@ -10,7 +10,7 @@ block_cipher = None
 entry_point = 'embedded_backend_main.py'
 
 # --- Application Name (will be the name of the executable and output folder) ---
-app_name = 'ii_agent_core_service'
+app_name = 'ii_agent_core_service' 
 
 # --- Collect data files ---
 # Add tuples of (source_path_on_disk, destination_path_in_bundle)
@@ -20,7 +20,7 @@ app_name = 'ii_agent_core_service'
 # For now, let's assume the main prompts are part of the Python source or loaded via pkgutil.
 # If not, they need to be listed here.
 # Example: If src/ii_agent/prompts contains .txt files for prompts
-# datas = [('src/ii_agent/prompts', 'ii_agent/prompts')]
+# datas = [('src/ii_agent/prompts', 'ii_agent/prompts')] 
 # If your application uses .env files and you want to bundle a default one:
 # datas = [('.env.example', '.env')]
 datas = []
@@ -39,7 +39,7 @@ binaries = []
 hidden_imports = [
     'uvloop', # Often used by FastAPI/Uvicorn, good to include if any part of it is pulled in by ii_agent code
     'httptools', # Companion to uvloop
-    'websockets.legacy.server',
+    'websockets.legacy.server', 
     'websockets.legacy.client',
     'websockets.extensions.permessage_deflate',
     'asyncio',
@@ -48,9 +48,9 @@ hidden_imports = [
     'psycopg2', # If psycopg2-binary is used, sometimes just 'psycopg2' is needed here.
                 # Or specific submodules like 'psycopg2._psycopg'
     'pydantic.v1', # If Pydantic v1 compatibility is used anywhere or by dependencies
-
+    
     # Standard library modules that can sometimes be missed if dynamically imported
-    'pkgutil',
+    'pkgutil', 
     'importlib_metadata', # For Python < 3.8, for Python 3.8+ 'importlib.metadata'
     'json',
     'logging',
@@ -64,7 +64,7 @@ hidden_imports = [
     'charset_normalizer', # Often a dependency of requests
     'idna', # Dependency of requests
     'certifi', # SSL certificates
-
+    
     # LLM SDKs and their dependencies if not fully picked up
     'anthropic',
     'anthropic._types',
@@ -77,13 +77,13 @@ hidden_imports = [
     'google.oauth2',
 
     # Other common libraries from requirements.txt that might be tricky
-    'anyio',
+    'anyio', 
     'anyio._core._eventgroups', # Example of specific submodule
-    'dotenv',
-    'requests',
+    'dotenv', 
+    'requests', 
     'beautifulsoup4',
     'jsonschema',
-
+    
     # If using Playwright (very large, ensure it's truly needed for embedded version)
     # 'playwright',
     # 'playwright.sync_api',

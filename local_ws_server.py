@@ -54,10 +54,10 @@ async def main():
 
     # This is the crucial line for Neutralinojs to capture the port.
     # Ensure it's the very first thing printed to stdout if possible, or clearly identifiable.
-    print(f"PORT:{port}", flush=True)
-
+    print(f"PORT:{port}", flush=True) 
+    
     print(f"local_ws_server.py: Attempting to start WebSocket server on ws://localhost:{port}", file=sys.stderr, flush=True)
-
+    
     try:
         async with websockets.serve(echo_server, "localhost", port):
             print(f"local_ws_server.py: Server started successfully on port {port}.", file=sys.stderr, flush=True)

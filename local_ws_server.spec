@@ -8,7 +8,7 @@
 # 'websockets.legacy.server' and 'websockets.legacy.client' are common.
 # 'asyncio' itself is usually handled, but sometimes specific platform backends might need help.
 hidden_imports = [
-    'websockets.legacy.server',
+    'websockets.legacy.server', 
     'websockets.legacy.client',
     'websockets.extensions.permessage_deflate', # Common extension
     # Add other asyncio backends if needed for specific platforms, e.g.

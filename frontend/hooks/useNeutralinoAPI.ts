@@ -24,7 +24,7 @@ export interface NeutralinoFileSaveDialogOptions {
 export interface NeutralinoAPI {
   isNeutralinoAvailable: boolean;
   os: {
-    showOpenDialog: (title: string, options?: NeutralinoFileOpenDialogOptions) => Promise<string[] | string>;
+    showOpenDialog: (title: string, options?: NeutralinoFileOpenDialogOptions) => Promise<string[] | string>; 
     showSaveDialog: (title: string, options?: NeutralinoFileSaveDialogOptions) => Promise<string>;
     showNotification: (title: string, content: string, icon?: 'INFO' | 'WARNING' | 'ERROR' | 'QUESTION') => Promise<void>;
   };
@@ -54,8 +54,8 @@ const useNeutralinoAPI = (): NeutralinoAPI => {
 
   useEffect(() => {
     // Check if Neutralino global object exists and key APIs are present
-    if (typeof window.Neutralino !== 'undefined' &&
-        window.Neutralino.os &&
+    if (typeof window.Neutralino !== 'undefined' && 
+        window.Neutralino.os && 
         window.Neutralino.filesystem &&
         window.Neutralino.extensions && // Check for extensions module
         window.Neutralino.app && // Check for app module
@@ -77,10 +77,10 @@ const useNeutralinoAPI = (): NeutralinoAPI => {
         if (isAvailable) {
           try {
             const result = await window.Neutralino.os.showOpenDialog(title, options);
-            return result;
+            return result; 
           } catch (err) {
             console.error("Neutralino.os.showOpenDialog error:", err);
-            throw err;
+            throw err; 
           }
         }
         console.warn('Neutralino API not available: showOpenDialog called.');
@@ -191,7 +191,7 @@ const useNeutralinoAPI = (): NeutralinoAPI => {
                     console.error(`Neutralino.app.exit error:`, err);
                     // If Neutralino exit fails, try a standard window close as last resort
                     // This might not always work as expected for cleanup.
-                    window.close();
+                    window.close(); 
                 }
             } else {
                 console.warn('Neutralino API not available: app.exit called.');

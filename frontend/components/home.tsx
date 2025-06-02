@@ -158,7 +158,7 @@ export default function Home() {
   // New WebSocket Connection Logic using Bootstrap
   useEffect(() => {
     let localWsInstance: WebSocket | null = null;
-
+  
     const initializeAppConnection = async () => {
       if (isReplayMode) {
         console.log("Home.tsx: Replay mode, skipping WebSocket connection.");
@@ -168,9 +168,9 @@ export default function Home() {
           console.log("Home.tsx: WebSocket connection already exists or is being established by another effect.");
           return;
       }
-
+  
       const bootstrapStatusDiv = document.getElementById('bootstrap-status');
-
+      
       console.log("Home.tsx: Waiting for PYTHON_BACKEND_READY promise...");
       // Ensure window.PYTHON_BACKEND_READY is available
       if (!(window as any).PYTHON_BACKEND_READY) {
@@ -180,7 +180,7 @@ export default function Home() {
           return;
       }
       const backendConfig = await (window as any).PYTHON_BACKEND_READY;
-
+  
       if (!backendConfig || !backendConfig.success) {
         const errorMsg = `Embedded Python backend failed: ${backendConfig?.error?.message || backendConfig?.error || 'Unknown error'}`;
         toast.error(errorMsg);
@@ -189,25 +189,25 @@ export default function Home() {
         // Do not remove bootstrapStatusDiv on error, so user can see the message.
         return;
       }
-
+      
       if (bootstrapStatusDiv) bootstrapStatusDiv.style.display = 'none'; // Hide on successful backend ready signal
-
+  
       const embeddedPort = backendConfig.port;
       const resolvedDeviceIdFromBootstrap = backendConfig.deviceId;
-
+  
       if (!resolvedDeviceIdFromBootstrap) {
         toast.error("Device ID not provided by bootstrap. Cannot connect WebSocket.");
         console.error("Home.tsx: Device ID missing from bootstrap config.");
         return;
       }
-      setDeviceId(resolvedDeviceIdFromBootstrap);
-
+      setDeviceId(resolvedDeviceIdFromBootstrap); 
+  
       const params = new URLSearchParams({ device_id: resolvedDeviceIdFromBootstrap });
       const wsUrl = `ws://localhost:${embeddedPort}?${params.toString()}`;
-
+      
       console.log(`Home.tsx: Connecting to embedded Python backend at: ${wsUrl}`);
       toast.info(`Connecting to backend...`);
-
+  
       localWsInstance = new WebSocket(wsUrl);
       // setSocket(localWsInstance); // Set socket state immediately for access in handlers
 
@@ -228,7 +228,7 @@ export default function Home() {
           console.log("Home.tsx: Sent INIT_AGENT to embedded backend.");
         }
       };
-
+  
       localWsInstance.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
@@ -242,13 +242,13 @@ export default function Home() {
               }
           }
           handleEvent({ ...data, id: data.id || uuidv4() });
-        } catch (error) {
+        } catch (error) { 
             console.error("Home.tsx: Error parsing WebSocket data:", error);
             toast.error("Received malformed data from backend.");
         }
       };
-
-      localWsInstance.onerror = (errorEvent) => {
+  
+      localWsInstance.onerror = (errorEvent) => { 
           console.error("Home.tsx: WebSocket error:", errorEvent);
           toast.error("WebSocket connection error. Check console or bootstrap status panel.");
           // Update bootstrap status as well if it's still visible
@@ -257,7 +257,7 @@ export default function Home() {
             bsDiv.innerHTML += `<p style='color:red;'>WebSocket connection error. Backend might be down.</p>`;
           }
       };
-      localWsInstance.onclose = (event) => {
+      localWsInstance.onclose = (event) => { 
           console.log(`Home.tsx: WebSocket connection closed. Code: ${event.code}, Reason: ${event.reason}`);
           setSocket(null); // Clear the main socket state
           if (event.code !== 1000 && event.code !== 1005) { // 1000 = Normal, 1005 = No Status Recvd (often normal on app close)
@@ -265,11 +265,11 @@ export default function Home() {
           }
       };
     };
-
-    if (!isReplayMode && !socket) {
+  
+    if (!isReplayMode && !socket) { 
       initializeAppConnection();
     }
-
+  
     return () => {
       if (localWsInstance && localWsInstance.readyState === WebSocket.OPEN) {
         console.log("Home.tsx: Closing WebSocket on effect cleanup.");
@@ -279,11 +279,11 @@ export default function Home() {
   }, [isReplayMode, selectedModel, toolSettings, socket]); // Added selectedModel, toolSettings, socket to dependencies
 
 
-  const localAppendMessage = (role: Message['role'], text: string, id?: string) => { /* ... as previously defined ... */
+  const localAppendMessage = (role: Message['role'], text: string, id?: string) => { /* ... as previously defined ... */ 
     const newMessage: Message = { id: id || `local-${Date.now().toString()}`, role: role, content: text, timestamp: Date.now() };
     setMessages(prev => [...prev, newMessage]);
   };
-  const handleFileUpload = async () => { /* ... as previously defined ... */
+  const handleFileUpload = async () => { /* ... as previously defined ... */ 
     if (!neuAPI.isNeutralinoAvailable) { toast.error("File uploads only in desktop app."); return; }
     if (!socket || socket.readyState !== WebSocket.OPEN) { toast.error("WebSocket not open. Cannot upload."); return; }
     try {
@@ -335,7 +335,7 @@ export default function Home() {
 
   const handleEnhancePrompt = () => { /* ... as previously defined ... */ };
   const handleClickAction = debounce((data: ActionStep | undefined, showTabOnly = false) => { /* ... as previously defined ... */ }, 50);
-  const handleQuestionSubmit = async (newQuestion: string) => { /* ... as previously defined, ensure it uses 'socket' state ... */
+  const handleQuestionSubmit = async (newQuestion: string) => { /* ... as previously defined, ensure it uses 'socket' state ... */ 
     if (!newQuestion.trim() || isLoading) return;
     setIsLoading(true); setCurrentQuestion(""); setIsCompleted(false); setIsStopped(false);
     const newUserMessage: Message = { id: Date.now().toString(), role: "user", content: newQuestion, timestamp: Date.now() };
@@ -350,7 +350,7 @@ export default function Home() {
   const handleEditMessage = (newQuestion: string) => { /* ... as previously defined ... */ };
   const getRemoteURL = (path: string | undefined) => { /* ... as previously defined ... */ };
 
-  async function executeNeutralinoCommandFromAgent(commandData: any) { /* ... as previously defined ... */
+  async function executeNeutralinoCommandFromAgent(commandData: any) { /* ... as previously defined ... */ 
     if (!neuAPI.isNeutralinoAvailable) { console.warn("Neutralino API not available for agent cmd:", commandData); sendNeutralinoResultToBackend(commandData.command_id, "error", { message: "Neutralino API not available." }); return; }
     const { command_id, action, details } = commandData; let status = "error"; let payload: any = {};
     console.log(`React: Executing Agent Neutralino Cmd: ${action}`, details); localAppendMessage("system", `Agent desktop cmd: ${action} ${JSON.stringify(details)}`);
@@ -364,7 +364,7 @@ export default function Home() {
     } catch (err: any) { console.error(`Error exec agent Neutralino action '${action}':`, err); payload = { message: err.message, code: err.code, details: err.toString() }; status = "error"; }
     sendNeutralinoResultToBackend(command_id, status, payload);
   }
-  function sendNeutralinoResultToBackend(command_id: string, status: string, result_payload: any) { /* ... as previously defined, ensure it uses 'socket' state ... */
+  function sendNeutralinoResultToBackend(command_id: string, status: string, result_payload: any) { /* ... as previously defined, ensure it uses 'socket' state ... */ 
     if (!socket || socket.readyState !== WebSocket.OPEN) { console.error("WS not open for Neutralino result."); toast.error("Cannot send desktop result: WS disconnected."); return; }
     const messageObject = { type: AgentEvent.NEUTRALINO_RESULT, content: { command_id: command_id, status: status, payload: result_payload } };
     socket.send(JSON.stringify(messageObject)); localAppendMessage("system", `Sent result for desktop cmd ${command_id} (status: ${status}) to agent.`);
@@ -380,7 +380,7 @@ export default function Home() {
       case AgentEvent.PROCESSING: /* ... */ setIsLoading(true); break;
       case AgentEvent.WORKSPACE_INFO: /* ... */ setWorkspaceInfo(data.content.path as string); break;
       case AgentEvent.AGENT_THINKING: /* ... */ setMessages((prev) => [ ...prev, { id: data.id, role: "assistant", content: data.content.text as string, timestamp: Date.now() } ]); break;
-      case AgentEvent.TOOL_CALL: /* ... (existing logic) ... */
+      case AgentEvent.TOOL_CALL: /* ... (existing logic) ... */ 
         const tool_message: Message = { id: data.id, role: "assistant", action: { type: data.content.tool_name as TOOL, data: data.content, }, timestamp: Date.now(), };
         const tool_url = (data.content.tool_input as { url: string })?.url as string;
         if (tool_url) { setBrowserUrl(tool_url); }
@@ -389,7 +389,7 @@ export default function Home() {
         break;
       case AgentEvent.FILE_EDIT: /* ... */ break;
       case AgentEvent.BROWSER_USE: /* ... */ break;
-      case AgentEvent.TOOL_RESULT: /* ... (existing logic) ... */
+      case AgentEvent.TOOL_RESULT: /* ... (existing logic) ... */ 
         setMessages((prev) => {
             const lastMessage = cloneDeep(prev[prev.length - 1]);
             if (lastMessage?.action && lastMessage.action?.type === data.content.tool_name) {
@@ -402,10 +402,10 @@ export default function Home() {
         });
         break;
       case AgentEvent.AGENT_RESPONSE: /* ... */ setMessages((prev) => [ ...prev, { id: Date.now().toString(), role: "assistant", content: data.content.text as string, timestamp: Date.now() } ]); setIsCompleted(true); setIsLoading(false); break;
-      case AgentEvent.FILE_UPLOAD_SUCCESS:
+      case AgentEvent.FILE_UPLOAD_SUCCESS: 
         toast.success(`File '${data.content.originalName}' uploaded to ${data.content.filePathInWorkspace}`);
         localAppendMessage("system", `File '${data.content.originalName}' uploaded. Path: ${data.content.filePathInWorkspace}. Ask agent to use it.`, data.id || `fs-${Date.now()}`);
-        setUploadedFiles((prev) => [...prev, data.content.filePathInWorkspace as string]);
+        setUploadedFiles((prev) => [...prev, data.content.filePathInWorkspace as string]); 
         if(neuAPI.isNeutralinoAvailable) neuAPI.os.showNotification('Upload Successful', `'${data.content.originalName}' uploaded.`);
         setIsUploading(false); break;
       case AgentEvent.FILE_UPLOAD_FAILURE:
@@ -413,7 +413,7 @@ export default function Home() {
         localAppendMessage("error", `File upload failed for '${data.content.originalName}': ${data.content.message}`, data.id || `fe-${Date.now()}`);
         if(neuAPI.isNeutralinoAvailable) neuAPI.os.showNotification('Upload Failed', data.content.message as string);
         setIsUploading(false); break;
-      case AgentEvent.ERROR:
+      case AgentEvent.ERROR: 
         toast.error(data.content.message as string); setIsUploading(false); setIsLoading(false); break;
       case AgentEvent.NEUTRALINO_COMMAND:
         executeNeutralinoCommandFromAgent(data.content); break;
@@ -426,7 +426,7 @@ export default function Home() {
   const isBrowserTool = useMemo( () => { /* ... as previously defined ... */ return false; }, [currentActionData] );
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages?.length]);
 
-  return ( /* ... existing JSX ... */
+  return ( /* ... existing JSX ... */ 
     <div className="flex flex-col items-center justify-center min-h-screen bg-[#191E1B]">
       <SidebarButton />
       {!isInChatView && ( <Image src="/logo-only.png" alt="II-Agent Logo" width={80} height={80} className="rounded-sm" /> )}
@@ -458,7 +458,7 @@ export default function Home() {
                 setValue={setCurrentQuestion}
                 handleKeyDown={handleKeyDown}
                 handleSubmit={handleQuestionSubmit}
-                handleFileUpload={handleFileUpload}
+                handleFileUpload={handleFileUpload} 
                 isUploading={isUploading}
                 isDisabled={!socket || socket.readyState !== WebSocket.OPEN}
                 isGeneratingPrompt={isGeneratingPrompt}
