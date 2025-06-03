@@ -1,21 +1,21 @@
 # Stage 1: Frontend Builder
 FROM node:18-alpine AS frontend-builder
 
-WORKDIR /app/frontend_src
+WORKDIR /build_root # Represents a simulated project root for the build script
 
-# Copy package.json and yarn.lock
-COPY frontend/package.json frontend/yarn.lock ./
+# Copy frontend source code
+COPY frontend ./frontend
 
-# Install frontend dependencies
-RUN yarn install --frozen-lockfile
+# Copy the build script
+COPY scripts/build-frontend.sh ./scripts/build-frontend.sh
+RUN chmod +x ./scripts/build-frontend.sh
 
-# Copy the rest of the frontend code
-COPY frontend/ ./
+# Run the build script (it handles yarn install and yarn build internally)
+# The script changes directory to ./frontend and then comes back.
+RUN ./scripts/build-frontend.sh
+# Built assets are now in /build_root/frontend/.next and /build_root/frontend/public
 
-# Build the frontend
-RUN yarn build
-
-# Stage 2: Python Application (Final Stage)
+# Stage 2: Python Application Builder (for Python dependencies)
 FROM python:3.10-slim AS final-app-builder
 
 # Install build dependencies for Python
@@ -34,8 +34,9 @@ COPY src/ii_agent/ ./src/ii_agent/
 RUN python -m venv /venv
 ENV PATH="/venv/bin:$PATH"
 RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir .
+    && pip install --no-cache-dir . # Installs the project itself and its dependencies
 
+# Stage 3: Final Python Application Stage
 FROM python:3.10-slim
 
 WORKDIR /app
@@ -52,24 +53,43 @@ RUN apt-get update && apt-get install -y \
     && apt-get install -y docker-ce-cli \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy virtual environment from builder stage
+# Copy virtual environment from Python builder stage
 COPY --from=final-app-builder /venv /venv
 ENV PATH="/venv/bin:$PATH"
 
-# Create frontend_build directory for Next.js static assets
-RUN mkdir -p /app/frontend_build/.next
+# Copy utility scripts
+COPY scripts/prepare-frontend-assets.sh /app/scripts/prepare-frontend-assets.sh
+COPY scripts/setup-backend.sh /app/scripts/setup-backend.sh
+RUN chmod +x /app/scripts/*.sh
 
-# Copy built frontend assets from frontend-builder stage
-COPY --from=frontend-builder /app/frontend_src/.next/static /app/frontend_build/.next/static
-COPY --from=frontend-builder /app/frontend_src/public /app/frontend_build/public
-COPY --from=frontend-builder /app/frontend_src/.next/server/app/index.html /app/frontend_build/index.html
+# Create the directory structure that prepare-frontend-assets.sh expects to read from
+# This is a temporary staging area within this final stage for assets from frontend-builder
+RUN mkdir -p /app/frontend/.next/server/app
+RUN mkdir -p /app/frontend/public
 
-# Copy backend application code (including ws_server.py)
-# This must come AFTER copying frontend assets to avoid overwriting frontend_build
+# Copy built frontend assets from the frontend-builder stage into the temporary location
+# that prepare-frontend-assets.sh will use as a source.
+# Source paths are relative to /build_root in the frontend-builder stage.
+# Destination paths are relative to /app in this stage.
+COPY --from=frontend-builder /build_root/frontend/.next/static /app/frontend/.next/static
+COPY --from=frontend-builder /build_root/frontend/public /app/frontend/public
+COPY --from=frontend-builder /build_root/frontend/.next/server/app/index.html /app/frontend/.next/server/app/index.html
+
+# Run the script to move assets to the final /app/frontend_build location
+RUN /app/scripts/prepare-frontend-assets.sh
+# This script creates /app/frontend_build and populates it.
+
+# Copy backend application code (including ws_server.py, etc.)
+# This must come AFTER frontend asset preparation if frontend_build is at /app/frontend_build
+# and COPY . . would overwrite it or its contents if not handled carefully.
+# prepare-frontend-assets.sh creates frontend_build, so COPY . . should be fine.
 COPY . .
 
-# Create workspace directory (if it's not created by COPY .)
-RUN mkdir -p workspace
+# Run backend setup script (currently minimal, e.g. ensures workspace dir)
+# WORKSPACE_PATH env var will be used by this script if set at runtime, otherwise defaults.
+RUN /app/scripts/setup-backend.sh
+# Note: The setup-backend.sh script creates a workspace directory (e.g. /app/workspace_local_setup or $WORKSPACE_PATH)
+# The main application uses WORKSPACE_PATH (e.g. /app/workspace from docker-compose.yaml)
 
 # Install Playwright in a single layer
 RUN playwright install --with-deps chromium
