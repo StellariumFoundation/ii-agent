@@ -416,7 +416,7 @@ def main():
         use_caching=False,
         project_id=args.project_id,
         region=args.region,
-        thinking_tokens=2048,
+        thinking_tokens=0,
     )
 
     # Initialize token counter and context manager

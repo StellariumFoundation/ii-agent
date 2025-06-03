@@ -24,8 +24,6 @@ class SlideDeckInitTool(LLMTool):
         tool_input: dict[str, Any],
         message_history: Optional[MessageHistory] = None,
     ) -> ToolImplOutput:
-        self.history = MessageHistory()
-
         try:
             # Create the presentation directory if it doesn't exist
             presentation_dir = f"{self.workspace_manager.root}/presentation"
@@ -114,6 +112,15 @@ class SlideDeckCompleteTool(LLMTool):
         message_history: Optional[MessageHistory] = None,
     ) -> ToolImplOutput:
         slide_paths = tool_input["slide_paths"]
+        for slide_path in slide_paths:
+            # Normalize path by removing ./ prefix if present
+            normalized_path = slide_path.lstrip("./")
+            if not normalized_path.startswith("slides/"):
+                return ToolImplOutput(
+                    f"Error: Slide path '{slide_path}' must be in the slides/ subdirectory (e.g. `./slides/introduction.html`, `./slides/conclusion.html`)",
+                    f"Invalid slide path",
+                    auxiliary_data={"success": False, "error": "Invalid slide path format"},
+                )
         slide_iframes = [SLIDE_IFRAME_TEMPLATE.format(slide_path=slide_path) for slide_path in slide_paths]
         try:
             index_path = f"{self.workspace_manager.root}/presentation/reveal.js/index.html"

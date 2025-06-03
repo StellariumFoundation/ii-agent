@@ -103,10 +103,13 @@ class SimpleMemoryTool(LLMTool):
         new_string = tool_input.get("new_string", "")
 
         if action == "read":
-            return self._read_memory()
+            result =  self._read_memory()
+            return ToolImplOutput(result, "Memory read successfully", {"success": True})
         elif action == "write":
-            return self._write_memory(content)
+            result =  self._write_memory(content)
+            return ToolImplOutput(result, "Memory write completed", {"success": True})
         elif action == "edit":
-            return self._edit_memory(old_string, new_string)
+            result = self._edit_memory(old_string, new_string)
+            return ToolImplOutput(result, "Memory edit completed", {"success": True})
         else:
-            return f"Error: Unknown action '{action}'. Valid actions are read, write, edit."
+            return ToolImplOutput(f"Error: Unknown action '{action}'. Valid actions are read, write, edit.", "Invalid action", {"success": False})

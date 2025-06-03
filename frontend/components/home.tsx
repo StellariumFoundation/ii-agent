@@ -7,8 +7,11 @@ import {
   Globe,
   Terminal as TerminalIcon,
   X,
-  Loader2,
   Share,
+  Radio,
+  Wifi,
+  WifiOff,
+  Loader2,
 } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -51,6 +54,12 @@ export default function Home() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
+  // Add Google Drive related state
+  const [isGoogleDriveConnected, setIsGoogleDriveConnected] = useState(false);
+  // Add state for Google Picker
+  const [googlePickerLoaded, setGooglePickerLoaded] = useState(false);
+  const [googlePickerApiLoaded, setGooglePickerApiLoaded] = useState(false);
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [socket, setSocket] = useState<WebSocket | null>(null);
@@ -80,6 +89,9 @@ export default function Home() {
     browser: true,
   });
   const [selectedModel, setSelectedModel] = useState<string>();
+  const [wsConnectionState, setWsConnectionState] = useState<
+    "connecting" | "connected" | "disconnected"
+  >("connecting");
 
   const isReplayMode = useMemo(() => !!searchParams.get("id"), [searchParams]);
 
@@ -108,7 +120,8 @@ export default function Home() {
         }
 
         const data = await response.json();
-        setWorkspaceInfo(data.events?.[0]?.workspace_dir);
+        const workspace = data.events?.[0]?.workspace_dir;
+        setWorkspaceInfo(workspace);
 
         if (data.events && Array.isArray(data.events)) {
           // Process events to reconstruct the conversation
@@ -119,9 +132,8 @@ export default function Home() {
             setIsLoading(true);
             for (let i = 0; i < data.events.length; i++) {
               const event = data.events[i];
-              // Process each event with a 2-second delay
-              await new Promise((resolve) => setTimeout(resolve, 50));
-              handleEvent({ ...event.event_payload, id: event.id });
+              await new Promise((resolve) => setTimeout(resolve, 1500));
+              handleEvent({ ...event.event_payload, id: event.id }, workspace);
             }
             setIsLoading(false);
           };
@@ -218,6 +230,7 @@ export default function Home() {
           break;
 
         case TOOL.IMAGE_GENERATE:
+        case TOOL.IMAGE_SEARCH:
         case TOOL.BROWSER_USE:
         case TOOL.VISIT:
           setActiveTab(TAB.BROWSER);
@@ -411,11 +424,15 @@ export default function Home() {
   };
 
   const handleFileUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>
+    event: React.ChangeEvent<HTMLInputElement>,
+    dontAddToUserMessage?: boolean
   ) => {
     if (!event.target.files || event.target.files.length === 0) return;
 
     const files = Array.from(event.target.files);
+
+    // Check if we're dealing with a folder upload from Google Drive
+    const folderFile = files.find((file) => file.name.startsWith("folder:"));
 
     // Create a map to track upload status for each file
     const fileStatusMap: { [filename: string]: boolean } = {};
@@ -432,16 +449,23 @@ export default function Home() {
     const workspacePath = workspaceInfo || "";
     const connectionId = workspacePath.split("/").pop();
 
+    // If this is a folder upload, only include the folder metadata in the message
+    const messageFiles = folderFile
+      ? [folderFile.name]
+      : files.map((file) => file.name);
+
     // Add files to message history (initially without content)
     const newUserMessage: Message = {
       id: Date.now().toString(),
       role: "user",
-      files: files.map((file) => file.name),
+      files: messageFiles,
       fileContents: fileContentMap,
       timestamp: Date.now(),
     };
 
-    setMessages((prev) => [...prev, newUserMessage]);
+    if (!dontAddToUserMessage) {
+      setMessages((prev) => [...prev, newUserMessage]);
+    }
 
     // Process each file in parallel
     const uploadPromises = files.map(async (file) => {
@@ -515,10 +539,22 @@ export default function Home() {
           (m) => m.id === newUserMessage.id
         );
         if (messageIndex >= 0) {
-          updatedMessages[messageIndex] = {
-            ...updatedMessages[messageIndex],
-            fileContents: fileContentMap,
-          };
+          // If this is a folder upload, only include the folder metadata in the fileContents
+          if (folderFile) {
+            const folderFileContents: { [filename: string]: string } = {};
+            folderFileContents[folderFile.name] =
+              fileContentMap[folderFile.name];
+
+            updatedMessages[messageIndex] = {
+              ...updatedMessages[messageIndex],
+              fileContents: folderFileContents,
+            };
+          } else {
+            updatedMessages[messageIndex] = {
+              ...updatedMessages[messageIndex],
+              fileContents: fileContentMap,
+            };
+          }
         }
         return updatedMessages;
       });
@@ -537,11 +573,14 @@ export default function Home() {
     return `${process.env.NEXT_PUBLIC_API_URL}/workspace/${workspaceId}/${path}`;
   };
 
-  const handleEvent = (data: {
-    id: string;
-    type: AgentEvent;
-    content: Record<string, unknown>;
-  }) => {
+  const handleEvent = (
+    data: {
+      id: string;
+      type: AgentEvent;
+      content: Record<string, unknown>;
+    },
+    workspacePath?: string
+  ) => {
     switch (data.type) {
       case AgentEvent.USER_MESSAGE:
         setMessages((prev) => [
@@ -629,11 +668,10 @@ export default function Home() {
           ) {
             lastMessage.action.data.content = data.content.content as string;
             lastMessage.action.data.path = data.content.path as string;
-            const filePath = (data.content.path as string)?.includes(
-              workspaceInfo
-            )
+            const workspace = workspacePath || workspaceInfo;
+            const filePath = (data.content.path as string)?.includes(workspace)
               ? (data.content.path as string)
-              : `${workspaceInfo}/${data.content.path}`;
+              : `${workspace}/${data.content.path}`;
 
             setFilesContent((prev) => {
               return {
@@ -683,7 +721,8 @@ export default function Home() {
           if (
             data.content.tool_name !== TOOL.SEQUENTIAL_THINKING &&
             data.content.tool_name !== TOOL.PRESENTATION &&
-            data.content.tool_name !== TOOL.MESSAGE_USER
+            data.content.tool_name !== TOOL.MESSAGE_USER &&
+            data.content.tool_name !== TOOL.RETURN_CONTROL_TO_USER
           ) {
             // TODO: Implement helper function to handle tool results
             setMessages((prev) => {
@@ -801,6 +840,7 @@ export default function Home() {
   useEffect(() => {
     // Connect to WebSocket when the component mounts
     const connectWebSocket = () => {
+      setWsConnectionState("connecting");
       const params = new URLSearchParams({ device_id: deviceId });
       const ws = new WebSocket(
         `${process.env.NEXT_PUBLIC_API_URL}/ws?${params.toString()}`
@@ -808,6 +848,7 @@ export default function Home() {
 
       ws.onopen = () => {
         console.log("WebSocket connection established");
+        setWsConnectionState("connected");
         // Request workspace info immediately after connection
         ws.send(
           JSON.stringify({
@@ -828,11 +869,13 @@ export default function Home() {
 
       ws.onerror = (error) => {
         console.log("WebSocket error:", error);
+        setWsConnectionState("disconnected");
         toast.error("WebSocket connection error");
       };
 
       ws.onclose = () => {
         console.log("WebSocket connection closed");
+        setWsConnectionState("disconnected");
         setSocket(null);
       };
 
@@ -875,6 +918,69 @@ export default function Home() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages?.length]);
+
+  useEffect(() => {
+    const checkGoogleAuthStatus = async () => {
+      try {
+        const response = await fetch("/api/google/status");
+        const data = await response.json();
+
+        if (!data.authenticated) {
+          const refreshResponse = await fetch("/api/google/refresh", {
+            method: "POST",
+          });
+
+          if (refreshResponse.ok) {
+            const retryResponse = await fetch("/api/google/status");
+            const retryData = await retryResponse.json();
+            setIsGoogleDriveConnected(retryData.authenticated);
+            return;
+          }
+        }
+        setIsGoogleDriveConnected(data.authenticated);
+      } catch (error) {
+        console.error("Error checking Google auth status:", error);
+        setIsGoogleDriveConnected(false);
+      }
+    };
+
+    checkGoogleAuthStatus();
+
+    // Check auth status when URL contains google_auth=success
+    const handleAuthSuccess = () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get("google_auth") === "success") {
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+      }
+    };
+
+    handleAuthSuccess();
+  }, []);
+
+  const handleGoogleDriveAuth = async (): Promise<boolean> => {
+    try {
+      window.location.href = "/api/google/auth";
+      return false;
+    } catch {
+      toast.error("Failed to authenticate with Google Drive");
+      return false;
+    }
+  };
+
+  useEffect(() => {
+    if (!googlePickerLoaded) {
+      const script = document.createElement("script");
+      script.src = "https://apis.google.com/js/api.js";
+      script.onload = () => {
+        window.gapi.load("picker", () => {
+          setGooglePickerApiLoaded(true);
+        });
+      };
+      document.body.appendChild(script);
+      setGooglePickerLoaded(true);
+    }
+  }, [googlePickerLoaded]);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-[#191E1B]">
@@ -945,6 +1051,8 @@ export default function Home() {
                 handleKeyDown={handleKeyDown}
                 handleSubmit={handleQuestionSubmit}
                 handleFileUpload={handleFileUpload}
+                handleGoogleDriveAuth={handleGoogleDriveAuth}
+                isGoogleDriveConnected={isGoogleDriveConnected}
                 isUploading={isUploading}
                 isDisabled={!socket || socket.readyState !== WebSocket.OPEN}
                 isGeneratingPrompt={isGeneratingPrompt}
@@ -953,6 +1061,8 @@ export default function Home() {
                 setToolSettings={setToolSettings}
                 selectedModel={selectedModel}
                 setSelectedModel={setSelectedModel}
+                googlePickerApiLoaded={googlePickerApiLoaded}
+                setIsGoogleDriveConnected={setIsGoogleDriveConnected}
               />
             ) : (
               <motion.div
@@ -983,12 +1093,16 @@ export default function Home() {
                   handleKeyDown={handleKeyDown}
                   handleQuestionSubmit={handleQuestionSubmit}
                   handleFileUpload={handleFileUpload}
+                  handleGoogleDriveAuth={handleGoogleDriveAuth}
+                  isGoogleDriveConnected={isGoogleDriveConnected}
                   isGeneratingPrompt={isGeneratingPrompt}
                   handleEnhancePrompt={handleEnhancePrompt}
                   handleCancel={handleCancelQuery}
                   editingMessage={editingMessage}
                   setEditingMessage={setEditingMessage}
                   handleEditMessage={handleEditMessage}
+                  googlePickerApiLoaded={googlePickerApiLoaded}
+                  setIsGoogleDriveConnected={setIsGoogleDriveConnected}
                 />
 
                 <div className="col-span-6 bg-[#1e1f23] border border-[#3A3B3F] p-4 rounded-2xl">
@@ -1078,15 +1192,30 @@ export default function Home() {
                   />
                   <ImageBrowser
                     className={
-                      activeTab === TAB.BROWSER &&
-                      currentActionData?.type === TOOL.IMAGE_GENERATE
+                      (activeTab === TAB.BROWSER &&
+                        currentActionData?.type === TOOL.IMAGE_GENERATE) ||
+                      currentActionData?.type === TOOL.IMAGE_SEARCH
                         ? ""
                         : "hidden"
                     }
-                    url={currentActionData?.data.tool_input?.output_filename}
-                    image={getRemoteURL(
-                      currentActionData?.data.tool_input?.output_filename
-                    )}
+                    url={
+                      currentActionData?.data.tool_input?.output_filename ||
+                      currentActionData?.data.tool_input?.query
+                    }
+                    images={
+                      currentActionData?.type === TOOL.IMAGE_SEARCH
+                        ? parseJson(
+                            currentActionData?.data?.result as string
+                          )?.map(
+                            (item: { image_url: string }) => item?.image_url
+                          )
+                        : [
+                            getRemoteURL(
+                              currentActionData?.data.tool_input
+                                ?.output_filename
+                            ),
+                          ]
+                    }
                   />
                   <CodeEditor
                     currentActionData={currentActionData}
@@ -1107,6 +1236,28 @@ export default function Home() {
             )}
           </AnimatePresence>
         </LayoutGroup>
+      )}
+      {!isInChatView && (
+        <div className="fixed bottom-4 right-4 flex items-center gap-2 bg-black/50 backdrop-blur-sm px-3 py-2 rounded-full">
+          {wsConnectionState === "connecting" && (
+            <>
+              <Radio className="h-4 w-4 text-yellow-400 animate-pulse" />
+              <span className="text-yellow-400 text-sm">Connecting...</span>
+            </>
+          )}
+          {wsConnectionState === "connected" && (
+            <>
+              <Wifi className="h-4 w-4 text-green-500" />
+              <span className="text-green-500 text-sm">Connected</span>
+            </>
+          )}
+          {wsConnectionState === "disconnected" && (
+            <>
+              <WifiOff className="h-4 w-4 text-red-500" />
+              <span className="text-red-500 text-sm">Disconnected</span>
+            </>
+          )}
+        </div>
       )}
     </div>
   );

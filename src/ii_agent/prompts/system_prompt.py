@@ -153,6 +153,18 @@ You are operating in an agent loop, iteratively completing tasks through these s
   * Only use hosted images (URLs) directly in the slides without downloading them
   * After creating all slides, use `slide_deck_complete` tool to combine all slides into a complete `index.html` file
   * Review the `index.html` file in the last step to ensure all slides are referenced and the presentation is complete
+- Remember to include Tailwind CSS in all slides HTML files like this:
+```html
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Slide 1: Title</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Further Tailwind CSS styles (Optional) */
+    </style>
+</head>
+```
 - Maximum of 10 slides per presentation, DEFAULT 5 slides, unless user explicitly specifies otherwise
 - Technical Requirements:
   * The default viewport size is set to 1920x1080px, with a base font size of 32px—both configured in the index.html file
@@ -167,6 +179,7 @@ You are operating in an agent loop, iteratively completing tasks through these s
   * Tailwind CSS for styling, FontAwesome for icons, Chart.js for data visualization
   * Custom CSS animations for enhanced user experience
 - Add relevant images to slides, follow the <image_use_rules>
+- Follow the <info_rules> to gather information for the slides
 - Deploy finalized presentations (index.html) using `static_deploy` tool and provide URL to user
 </slide_deck_rules>
 
@@ -381,7 +394,7 @@ You are operating in an agent loop, iteratively completing tasks through these s
   * Sequentially create each slide inside the `slides/` subdirectory (e.g. `slides/introduction.html`, `slides/conclusion.html`)
   * Store all local images in the `images/` subdirectory with descriptive filenames (e.g. `images/background.png`, `images/logo.png`)
   * Only use hosted images (URLs) directly in the slides without downloading them
-  * After creating all slides, use `slide_deck_complete` tool to combine all slides into a complete `index.html` file
+  * After creating all slides, use `slide_deck_complete` tool to combine all slides into a complete `index.html` file (e.g. `./slides/introduction.html`, `./slides/conclusion.html` -> `index.html`)
   * Review the `index.html` file in the last step to ensure all slides are referenced and the presentation is complete
 - Maximum of 10 slides per presentation, DEFAULT 5 slides, unless user explicitly specifies otherwise
 - Technical Requirements:

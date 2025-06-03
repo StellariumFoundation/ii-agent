@@ -2,6 +2,7 @@ from argparse import ArgumentParser
 import uuid
 from pathlib import Path
 from ii_agent.utils import WorkspaceManager
+from ii_agent.utils.constants import DEFAULT_MODEL
 
 
 def parse_common_args(parser: ArgumentParser):
@@ -67,6 +68,38 @@ def parse_common_args(parser: ArgumentParser):
         default="compactify-memory",
         choices=["compactify-memory", "none", "simple"],
         help="Type of memory tool to use"
+    )
+    parser.add_argument(
+        "--llm-client",
+        type=str,
+        default="anthropic-direct",
+        choices=["anthropic-direct", "openai-direct"],
+        help="LLM client to use (anthropic-direct or openai-direct for LMStudio/local)",
+    )
+    parser.add_argument(
+        "--model-name",
+        type=str,
+        default=DEFAULT_MODEL,
+        help="Name of the LLM model to use (e.g., claude-3-opus-20240229 or local-model-identifier for LMStudio)",
+    )
+    parser.add_argument(
+        "--azure-model",
+        action="store_true",
+        default=False,
+        help="Use Azure OpenAI model",
+    )
+    parser.add_argument(
+        "--no-cot-model",
+        action="store_false",
+        dest="cot_model",
+        default=True,
+        help="Disable chain-of-thought model (enabled by default)",
+    )
+    parser.add_argument(
+        "--prompt",
+        type=str,
+        default=None,
+        help="Prompt to use for the LLM",
     )
     return parser
 

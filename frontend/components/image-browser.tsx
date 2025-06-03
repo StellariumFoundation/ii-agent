@@ -1,13 +1,13 @@
-import { Globe, SquareArrowOutUpRight } from "lucide-react";
+import { Globe } from "lucide-react";
 
 interface BrowserProps {
   className?: string;
   url?: string;
-  image?: string;
+  images?: string[];
 }
 
-const ImageBrowser = ({ className, url, image }: BrowserProps) => {
-  if (!url) return;
+const ImageBrowser = ({ className, url, images = [] }: BrowserProps) => {
+  if (!url && !images?.length) return null;
 
   return (
     <div
@@ -29,23 +29,19 @@ const ImageBrowser = ({ className, url, image }: BrowserProps) => {
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-1">
-          <button
-            className="p-1.5 rounded-md hover:bg-neutral-800 transition-colors"
-            onClick={() => window.open(url, "_blank")}
-          >
-            <SquareArrowOutUpRight className="h-4 w-4 text-white" />
-          </button>
-        </div>
       </div>
-      <div className="bg-black/80 h-full">
-        {image && (
-          <img
-            src={image}
-            alt="Browser"
-            className="w-full h-full object-contain object-center"
-          />
-        )}
+      <div className="bg-black/80 h-full overflow-auto">
+        <div className="flex flex-col gap-4 p-4">
+          {images.map((imgSrc, index) => (
+            <div key={index} className="flex flex-col gap-2">
+              <img
+                src={imgSrc}
+                alt={`Image ${index + 1}`}
+                className="w-full object-contain max-h-[500px]"
+              />
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
