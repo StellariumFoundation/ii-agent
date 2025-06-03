@@ -27,7 +27,7 @@ The II Agent Frontend is a modern web interface for the II Agent platform, provi
    NEXT_PUBLIC_VSCODE_URL=http://127.0.0.1:8080
    ```
 
-   Note: NEXT_PUBLIC_VSCODE_URL is optional and can be omitted if you're not using VS Code integration.
+   Note: NEXT_PUBLIC_VSCODE_URL is optional and can be omitted if you're not using VS Code integration. This URL is used to embed an iframe-based VS Code instance within the application, enabling the code editing feature in the user interface. If not provided, the code editor component may not be functional.
    Adjust the URL to match your backend server address.
 
 ## Development Workflow

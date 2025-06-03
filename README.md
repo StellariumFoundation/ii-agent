@@ -95,7 +95,7 @@ You can view the full traces of some samples here: [GAIA Benchmark Traces](https
 
 ## Requirements
 - Docker Compose
-- Python 3.10+
+- Python 3.10+ (see `pyproject.toml` for the exact version and full list of dependencies).
 - Node.js 18+ (for frontend)
 - At least one of the following:
   - Anthropic API key, or
@@ -126,16 +126,19 @@ ANTHROPIC_API_KEY=your_anthropic_key
 # Option 2: For Gemini models via Google
 GEMINI_API_KEY=your_gemini_key
 # Search Provider API Key
-TAVILY_API_KEY=your_tavily_key
+TAVILY_API_KEY=your_tavily_key # Primary search provider
 
+# Static File Base URL (Optional)
+# If running locally and want files in `workspace/` (e.g., images, deployed sites) to be linkable via HTTP,
+# set this to your local web server's base URL serving that directory (e.g., http://localhost:8000/).
 STATIC_FILE_BASE_URL=http://localhost:8000/
 ```
 
-We also support other search and crawl provider such as FireCrawl and SerpAPI (Optional but yield better performance):
+We also support other search and crawl provider such as FireCrawl, SerpAPI, and Jina AI (Optional but yield better performance):
 ```bash
-JINA_API_KEY=your_jina_key
-FIRECRAWL_API_KEY=your_firecrawl_key
-SERPAPI_API_KEY=your_serpapi_key 
+FIRECRAWL_API_KEY=your_firecrawl_key # For FireCrawl
+SERPAPI_API_KEY=your_serpapi_key # For SerpAPI (also enables image search tool if set)
+JINA_API_KEY=your_jina_key # For Jina AI (alternative search/retrieval)
 ```
 
 Enabling Image and Video Generation Tool (Optional, good for more creative output)
@@ -168,7 +171,9 @@ PROJECT_ID=project-id \
 REGION=region \
 ./start.sh
 ```
-*Note: Due to a bug in the latest docker, if you receive and error, try running with `--force-recreate`. For example `./start.sh --force-recreate `*
+When running with Docker and using Vertex AI, ensure that `GOOGLE_APPLICATION_CREDENTIALS`, `PROJECT_ID`, and `REGION` are set in your `.env` file, as this file is used by Docker Compose to inject environment variables into the backend service.
+
+*Note: If you encounter errors like 'container name is already in use' or issues with outdated container images when running `docker-compose`, try running with `docker-compose up --build --force-recreate` (or `./start.sh --build --force-recreate` if using the script).*
 
 After running start.sh, you can check your application at: localhost:3000
 
@@ -208,6 +213,7 @@ Options:
 - `--workspace`: Path to the workspace directory (default: ./workspace)
 - `--needs-permission`: Require permission before executing commands
 - `--minimize-stdout-logs`: Reduce the amount of logs printed to stdout
+- `--context-manager CONTEXT_MANAGER_TYPE`: Specifies the context manager to use. Options include `llm-summarizing` (default) and `amortized-forgetting`. This affects how the agent manages conversation history and context window.
 
 ### Web Interface
 
@@ -242,6 +248,10 @@ npm run dev
   - `llm/`: LLM client interfaces
   - `tools/`: Tool implementations
   - `utils/`: Utility functions
+
+## Tools Reference
+
+The agent comes with a variety of built-in tools. For a detailed list of available tools, their descriptions, and how to configure them using `tool_args`, please see the [Tools Reference](docs/tools_reference.md) document.
 
 ## Conclusion
 
