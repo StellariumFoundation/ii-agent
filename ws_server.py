@@ -26,8 +26,8 @@ from fastapi import (
     Request,
     HTTPException,
 )
-
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import anyio
 import base64
@@ -88,6 +88,7 @@ message_processors: Dict[WebSocket, asyncio.Task] = {}
 # Store global args for use in endpoint
 global_args = None
 
+FRONTEND_BUILD_DIR = Path("frontend_build").resolve()
 
 def map_model_name_to_client(model_name: str, ws_content: Dict[str, Any]) -> LLMClient:
     """Create an LLM client based on the model name and configuration.
@@ -842,6 +843,43 @@ async def get_session_events(session_id: str):
             status_code=500, detail=f"Error retrieving events: {str(e)}"
         )
 
+# Serve Next.js static assets (JS, CSS, etc.) from .next/static
+# Example: /_next/static/chunks/main-app-....js
+app.mount(
+    "/_next/static",
+    StaticFiles(directory=FRONTEND_BUILD_DIR / ".next" / "static"),
+    name="next_static",
+)
+
+# Serve static files from the Next.js 'public' directory (e.g., /favicon.ico, /logo.png)
+# This is mounted at the root. It must come AFTER specific API routes but BEFORE the SPA catch-all.
+app.mount(
+    "/",
+    StaticFiles(directory=FRONTEND_BUILD_DIR / "public"),
+    name="public_files",
+)
+
+# Catch-all route to serve the main Next.js application HTML (e.g., index.html)
+# This allows client-side routing to work.
+# This should be one of the LAST routes defined.
+@app.get("/{full_path:path}")
+async def serve_nextjs_app(request: Request, full_path: str):
+    entry_html_path = FRONTEND_BUILD_DIR / "index.html"
+    # This index.html is expected to be the main application shell,
+    # copied by the Docker build step from the Next.js output
+    # (e.g., from .next/server/app/index.html or .next/server/pages/index.html)
+
+    # Log requests caught by this route for debugging
+    # Ensure 'logger' is defined and configured in this scope
+    logger.info(f"SPA catch-all serving '{entry_html_path}' for path: {full_path}")
+
+    if not entry_html_path.exists():
+        logger.error(f"Frontend entry point HTML not found: {entry_html_path}")
+        return JSONResponse(
+            status_code=404,
+            content={"message": "Frontend application HTML not found."},
+        )
+    return FileResponse(entry_html_path)
 
 if __name__ == "__main__":
     main()

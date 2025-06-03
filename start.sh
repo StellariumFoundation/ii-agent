@@ -6,7 +6,6 @@ if [ ! -d "${PWD}/workspace" ]; then
 fi
 
 #BACKEND ENVIRONMENT VARIABLES
-export FRONTEND_PORT=3000
 export BACKEND_PORT=8000
 export WORKSPACE_PATH=${PWD}/workspace
 

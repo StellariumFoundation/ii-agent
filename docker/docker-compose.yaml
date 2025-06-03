@@ -1,14 +1,4 @@
 services:
-  frontend:
-    build:
-      context: ..
-      dockerfile: docker/frontend/Dockerfile
-    image: frontend
-    ports:
-      - "${FRONTEND_PORT:-3000}:3000"
-    volumes:
-      - ${WORKSPACE_PATH:-../workspace}:/app/workspace
-
   backend:
     build:
       context: ..
