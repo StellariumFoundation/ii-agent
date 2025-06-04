@@ -46,14 +46,14 @@ class TestListHtmlLinksTool(unittest.TestCase):
 
         result = self.tool.run_impl({"path": str(file_to_scan)})
 
-        self.assertTrue(result.metadata["success"])
-        self.assertIn("page1.html", result.metadata["linked_files"])
-        self.assertIn("page2.html", result.metadata["linked_files"])
-        self.assertIn("page3.html", result.metadata["linked_files"]) # Only filename
-        self.assertIn("no_ext_route", result.metadata["linked_files"])
-        self.assertNotIn("abs.html", result.metadata["linked_files"])
-        self.assertNotIn("image.jpg", result.metadata["linked_files"])
-        self.assertIn("Found the following unique local HTML file names", result.output_for_llm)
+        self.assertTrue(result.auxiliary_data["success"])
+        self.assertIn("page1.html", result.auxiliary_data["linked_files"])
+        self.assertIn("page2.html", result.auxiliary_data["linked_files"])
+        self.assertIn("page3.html", result.auxiliary_data["linked_files"]) # Only filename
+        self.assertIn("no_ext_route", result.auxiliary_data["linked_files"])
+        self.assertNotIn("abs.html", result.auxiliary_data["linked_files"])
+        self.assertNotIn("image.jpg", result.auxiliary_data["linked_files"])
+        self.assertIn("Found the following unique local HTML file names", result.tool_output)
         mock_read_text.assert_called_once()
 
 
@@ -69,9 +69,9 @@ class TestListHtmlLinksTool(unittest.TestCase):
         self.mock_workspace_manager.workspace_path.return_value = Path("/fake/workspace/test.html")
 
         result = self.tool.run_impl({"path": str(file_to_scan)})
-        self.assertTrue(result.metadata["success"])
-        self.assertEqual(result.metadata["linked_files"], [])
-        self.assertIn("No local HTML links found", result.output_for_llm)
+        self.assertTrue(result.auxiliary_data["success"])
+        self.assertEqual(result.auxiliary_data["linked_files"], [])
+        self.assertIn("No local HTML links found", result.tool_output)
 
     @patch("pathlib.Path.exists")
     @patch("pathlib.Path.is_file")
@@ -85,8 +85,8 @@ class TestListHtmlLinksTool(unittest.TestCase):
 
         result = self.tool.run_impl({"path": "document.txt"}) # Input path string
 
-        self.assertFalse(result.metadata["success"])
-        self.assertIn("is not an HTML file", result.output_for_llm)
+        self.assertFalse(result.auxiliary_data["success"])
+        self.assertIn("is not an HTML file", result.tool_output)
 
     @patch("pathlib.Path.exists")
     def test_run_impl_path_not_found(self, mock_exists):
@@ -94,8 +94,8 @@ class TestListHtmlLinksTool(unittest.TestCase):
         self.mock_workspace_manager.workspace_path.return_value = Path("/fake/workspace/nonexistent.html")
 
         result = self.tool.run_impl({"path": "nonexistent.html"})
-        self.assertFalse(result.metadata["success"])
-        self.assertIn("Path not found", result.output_for_llm)
+        self.assertFalse(result.auxiliary_data["success"])
+        self.assertIn("Path not found", result.tool_output)
 
     @patch("pathlib.Path.exists")
     @patch("pathlib.Path.is_file")
@@ -160,10 +160,10 @@ class TestListHtmlLinksTool(unittest.TestCase):
 
         result = self.tool.run_impl({"path": "my_dir"})
 
-        self.assertTrue(result.metadata["success"])
+        self.assertTrue(result.auxiliary_data["success"])
         expected_links = sorted(["link1.html", "link2.html", "link_outside_sub.html"])
-        self.assertEqual(sorted(list(result.metadata["linked_files"])), expected_links)
-        self.assertIn("Found the following unique local HTML file names", result.output_for_llm)
+        self.assertEqual(sorted(list(result.auxiliary_data["linked_files"])), expected_links)
+        self.assertIn("Found the following unique local HTML file names", result.tool_output)
 
         # Stop the manually started patches
         mock_is_file_repatch.stop()
@@ -187,8 +187,8 @@ class TestListHtmlLinksTool(unittest.TestCase):
         self.mock_workspace_manager.workspace_path.return_value = Path("/fake/workspace/special_thing")
 
         result = self.tool.run_impl({"path": "special_thing"})
-        self.assertFalse(result.metadata["success"])
-        self.assertIn("Path is neither a file nor a directory", result.output_for_llm)
+        self.assertFalse(result.auxiliary_data["success"])
+        self.assertIn("Path is neither a file nor a directory", result.tool_output)
 
 
 if __name__ == "__main__":

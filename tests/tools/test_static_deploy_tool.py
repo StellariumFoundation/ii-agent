@@ -63,8 +63,8 @@ class TestStaticDeployTool(unittest.TestCase):
 
             expected_url = f"file://{default_base_dir}/workspace/{self.workspace_uuid}/{file_path_str}"
             self.assertIsInstance(result, ToolImplOutput)
-            self.assertEqual(result.output_for_llm, expected_url)
-            self.assertEqual(result.output_for_user, f"Static file available at: {expected_url}")
+            self.assertEqual(result.tool_output, expected_url)
+            self.assertEqual(result.tool_result_message, f"Static file available at: {expected_url}")
             pre_mocked_file_path.relative_to.assert_called_once_with(self.mock_workspace_manager.root)
 
 
@@ -84,7 +84,7 @@ class TestStaticDeployTool(unittest.TestCase):
         result = tool_with_env.run_impl(tool_input)
 
         expected_url = f"http://custom.cdn.com/workspace/{self.workspace_uuid}/{file_path_str}"
-        self.assertEqual(result.output_for_llm, expected_url)
+        self.assertEqual(result.tool_output, expected_url)
 
     def test_run_impl_file_does_not_exist(self):
         file_path_str = "nonexistent.css"
@@ -96,8 +96,8 @@ class TestStaticDeployTool(unittest.TestCase):
         tool_input = {"file_path": file_path_str}
         result = self.tool.run_impl(tool_input)
 
-        self.assertEqual(result.output_for_llm, f"Path does not exist: {file_path_str}")
-        self.assertEqual(result.output_for_user, f"Path does not exist: {file_path_str}")
+        self.assertEqual(result.tool_output, f"Path does not exist: {file_path_str}")
+        self.assertEqual(result.tool_result_message, f"Path does not exist: {file_path_str}")
 
     def test_run_impl_path_is_not_a_file(self):
         dir_path_str = "static_dir"
@@ -110,8 +110,8 @@ class TestStaticDeployTool(unittest.TestCase):
         tool_input = {"file_path": dir_path_str}
         result = self.tool.run_impl(tool_input)
 
-        self.assertEqual(result.output_for_llm, f"Path is not a file: {dir_path_str}")
-        self.assertEqual(result.output_for_user, f"Path is not a file: {dir_path_str}")
+        self.assertEqual(result.tool_output, f"Path is not a file: {dir_path_str}")
+        self.assertEqual(result.tool_result_message, f"Path is not a file: {dir_path_str}")
 
     def test_run_impl_missing_filepath_input(self):
         # This should ideally be caught by schema validation in LLMTool.execute

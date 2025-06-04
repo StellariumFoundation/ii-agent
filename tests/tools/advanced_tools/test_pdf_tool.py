@@ -53,7 +53,7 @@ class TestPdfTextExtractTool(unittest.TestCase):
 
         self.assertIsInstance(result, ToolImplOutput)
         expected_text = "Text from page 1. Text from page 2."
-        self.assertEqual(result.output_for_llm, expected_text)
+        self.assertEqual(result.tool_output, expected_text)
         self.assertTrue(result.auxiliary_data["success"])
         self.assertEqual(result.auxiliary_data["extracted_chars"], len(expected_text))
 
@@ -77,8 +77,8 @@ class TestPdfTextExtractTool(unittest.TestCase):
         result = self.tool.run_impl(tool_input)
 
         self.assertTrue(result.auxiliary_data["success"])
-        self.assertTrue(len(result.output_for_llm) < 120) # Ensure truncated
-        self.assertIn("... (content truncated due to length)", result.output_for_llm)
+        self.assertTrue(len(result.tool_output) < 120) # Ensure truncated
+        self.assertIn("... (content truncated due to length)", result.tool_output)
         # Exact truncation logic: text[:max_len] + message
         # Max length is 100.
         # Expected: (long_text_part1+long_text_part2)[:100] + "\n... (content truncated due to length)"
@@ -89,7 +89,7 @@ class TestPdfTextExtractTool(unittest.TestCase):
 
         original_full_text = long_text_part1 + long_text_part2
         expected_truncated_text = original_full_text[:self.tool.max_output_length] + "\n... (content truncated due to length)"
-        self.assertEqual(result.output_for_llm, expected_truncated_text)
+        self.assertEqual(result.tool_output, expected_truncated_text)
 
 
     def test_run_impl_file_not_found(self):
@@ -97,7 +97,7 @@ class TestPdfTextExtractTool(unittest.TestCase):
             tool_input = {"file_path": "absent.pdf"}
             result = self.tool.run_impl(tool_input)
         self.assertFalse(result.auxiliary_data["success"])
-        self.assertIn("File not found", result.output_for_llm)
+        self.assertIn("File not found", result.tool_output)
 
     def test_run_impl_path_not_a_file(self):
         with patch("pathlib.Path.exists", return_value=True), \
@@ -105,7 +105,7 @@ class TestPdfTextExtractTool(unittest.TestCase):
             tool_input = {"file_path": "folder.pdf"} # Name suggests PDF but it's a folder
             result = self.tool.run_impl(tool_input)
         self.assertFalse(result.auxiliary_data["success"])
-        self.assertIn("is not a file", result.output_for_llm)
+        self.assertIn("is not a file", result.tool_output)
 
     def test_run_impl_not_a_pdf_file(self):
         with patch("pathlib.Path.exists", return_value=True), \
@@ -115,7 +115,7 @@ class TestPdfTextExtractTool(unittest.TestCase):
             tool_input = {"file_path": "document.txt"}
             result = self.tool.run_impl(tool_input)
         self.assertFalse(result.auxiliary_data["success"])
-        self.assertIn("is not a PDF", result.output_for_llm)
+        self.assertIn("is not a PDF", result.tool_output)
 
     @patch("pathlib.Path.exists", return_value=True)
     @patch("pathlib.Path.is_file", return_value=True)
@@ -124,8 +124,8 @@ class TestPdfTextExtractTool(unittest.TestCase):
         tool_input = {"file_path": "corrupted.pdf"}
         result = self.tool.run_impl(tool_input)
         self.assertFalse(result.auxiliary_data["success"])
-        self.assertIn("Error extracting text from PDF", result.output_for_llm)
-        self.assertIn("pymupdf error opening file", result.output_for_llm)
+        self.assertIn("Error extracting text from PDF", result.tool_output)
+        self.assertIn("pymupdf error opening file", result.tool_output)
 
     @patch("pathlib.Path.exists", return_value=True)
     @patch("pathlib.Path.is_file", return_value=True)
@@ -141,8 +141,8 @@ class TestPdfTextExtractTool(unittest.TestCase):
         tool_input = {"file_path": "page_error.pdf"}
         result = self.tool.run_impl(tool_input)
         self.assertFalse(result.auxiliary_data["success"])
-        self.assertIn("Error extracting text from PDF", result.output_for_llm)
-        self.assertIn("pymupdf page error", result.output_for_llm)
+        self.assertIn("Error extracting text from PDF", result.tool_output)
+        self.assertIn("pymupdf page error", result.tool_output)
 
 
 if __name__ == "__main__":

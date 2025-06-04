@@ -10,8 +10,8 @@ from src.ii_agent.tools.advanced_tools.gemini.base import GeminiTool # For patch
 from src.ii_agent.utils import WorkspaceManager
 from src.ii_agent.tools.base import ToolImplOutput
 # Attempting to fix import based on typical google cloud structure
-from google.cloud.aiplatform.generativeai import types as genai_types # For constructing mock responses
-from google.cloud.aiplatform import generativeai as genai # Ensure genai alias is available
+from google.genai import types as genai_types # For constructing mock responses
+import google.genai as genai # Ensure genai alias is available
 
 # Mock genai client if not available or to control behavior
 # try:
@@ -31,7 +31,7 @@ class CommonGeminiAudioToolTests(unittest.TestCase):
         self.env_patcher.start()
 
         # Patch the genai.Client constructor used in GeminiTool base class
-        self.genai_client_patcher = patch('google.generativeai.Client')
+        self.genai_client_patcher = patch('google.genai.Client')
         self.MockGenaiClientConstructor = self.genai_client_patcher.start()
 
         self.mock_gemini_client_instance = MagicMock(spec=genai.Client)
@@ -80,8 +80,8 @@ class TestAudioTranscribeTool(CommonGeminiAudioToolTests):
         self.assertEqual(content_arg.parts[1].inline_data.mime_type, "audio/mp3") # Hardcoded in tool
 
         self.assertIsInstance(result, ToolImplOutput)
-        self.assertEqual(result.output_for_llm, "This is a transcript.")
-        self.assertEqual(result.output_for_user, "This is a transcript.") # output_for_user is same as llm
+        self.assertEqual(result.tool_output, "This is a transcript.")
+        self.assertEqual(result.tool_result_message, "This is a transcript.") # output_for_user is same as llm
 
     @patch("builtins.open", new_callable=mock_open, read_data=b"data")
     def test_run_impl_gemini_api_error(self, mock_file):
@@ -91,7 +91,7 @@ class TestAudioTranscribeTool(CommonGeminiAudioToolTests):
         with patch('builtins.print') as mock_print: # Suppress print(e)
             result = self.tool.run_impl(tool_input)
 
-        self.assertEqual(result.output_for_llm, "Error analyzing the audio file, try again later.")
+        self.assertEqual(result.tool_output, "Error analyzing the audio file, try again later.")
         mock_print.assert_called_once() # Check that error was printed by tool
 
     @patch("builtins.open", side_effect=FileNotFoundError("File not present"))
@@ -100,7 +100,7 @@ class TestAudioTranscribeTool(CommonGeminiAudioToolTests):
         with patch('builtins.print') as mock_print:
             result = self.tool.run_impl(tool_input)
         # The tool's general exception handler will catch FileNotFoundError from open()
-        self.assertEqual(result.output_for_llm, "Error analyzing the audio file, try again later.")
+        self.assertEqual(result.tool_output, "Error analyzing the audio file, try again later.")
         mock_print.assert_called_with(FileNotFoundError("File not present"))
 
 
@@ -134,7 +134,7 @@ class TestAudioUnderstandingTool(CommonGeminiAudioToolTests):
 
 
         self.assertIsInstance(result, ToolImplOutput)
-        self.assertEqual(result.output_for_llm, "The meeting was about project Alpha.")
+        self.assertEqual(result.tool_output, "The meeting was about project Alpha.")
 
     @patch("builtins.open", new_callable=mock_open, read_data=b"data")
     def test_run_impl_gemini_api_error_understanding(self, mock_file):
@@ -144,7 +144,7 @@ class TestAudioUnderstandingTool(CommonGeminiAudioToolTests):
         with patch('builtins.print') as mock_print:
             result = self.tool.run_impl(tool_input)
 
-        self.assertEqual(result.output_for_llm, "Error analyzing the audio file, try again later.")
+        self.assertEqual(result.tool_output, "Error analyzing the audio file, try again later.")
 
 
 if __name__ == "__main__":

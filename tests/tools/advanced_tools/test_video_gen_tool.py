@@ -68,7 +68,7 @@ class CommonVideoGenToolTests(unittest.TestCase):
         self.env_patcher.start()
 
         # Patch genai.Client (used by Veo model)
-        self.genai_client_patcher = patch('google.generativeai.Client')
+        self.genai_client_patcher = patch('google.genai.Client')
         self.MockGenaiClientConstructor = self.genai_client_patcher.start()
         self.mock_veo_client_instance = MagicMock(spec=genai.Client)
         self.MockGenaiClientConstructor.return_value = self.mock_veo_client_instance
@@ -145,8 +145,8 @@ class TestVideoGenerateFromTextTool(CommonVideoGenToolTests):
 
             result = self.tool.run_impl(tool_input)
 
-        self.assertTrue(result.auxiliary_data["success"], msg=result.output_for_llm)
-        self.assertIn("Successfully generated video", result.output_for_llm)
+        self.assertTrue(result.auxiliary_data["success"], msg=result.tool_output)
+        self.assertIn("Successfully generated video", result.tool_output)
         self.assertEqual(result.auxiliary_data["output_path"], "sunset.mp4")
 
         self.mock_generate_videos_method.assert_called_once()
@@ -165,7 +165,7 @@ class TestVideoGenerateFromTextTool(CommonVideoGenToolTests):
         tool_input = {"prompt": "test", "output_filename": "video.mkv"} # Not .mp4
         result = self.tool.run_impl(tool_input)
         self.assertFalse(result.auxiliary_data["success"])
-        self.assertIn("output_filename must end with .mp4", result.output_for_llm)
+        self.assertIn("output_filename must end with .mp4", result.tool_output)
 
     @patch('time.sleep', return_value=None) # Ensure sleep is also patched here if setUp's doesn't cover it
     def test_run_impl_timeout(self, mock_sleep_override):
@@ -181,7 +181,7 @@ class TestVideoGenerateFromTextTool(CommonVideoGenToolTests):
         result = self.tool.run_impl(tool_input)
 
         self.assertFalse(result.auxiliary_data["success"])
-        self.assertIn("Video generation timed out", result.output_for_llm)
+        self.assertIn("Video generation timed out", result.tool_output)
         # Check sleep was called multiple times due to polling
         self.assertTrue(self.mock_sleep.call_count > 1) # Access the one from setUp
 
@@ -228,8 +228,8 @@ class TestVideoGenerateFromImageTool(CommonVideoGenToolTests):
 
         result = self.tool.run_impl(tool_input)
 
-        self.assertTrue(result.auxiliary_data["success"], msg=result.output_for_llm)
-        self.assertIn("Successfully generated video from image", result.output_for_llm)
+        self.assertTrue(result.auxiliary_data["success"], msg=result.tool_output)
+        self.assertIn("Successfully generated video from image", result.tool_output)
 
         expected_local_input_path = Path("/fake/workspace/input_images/source.png")
         expected_temp_gcs_image_uri = "gs://fake-veo-bucket/veo_temp_input_testuuid1234.png"
@@ -255,13 +255,13 @@ class TestVideoGenerateFromImageTool(CommonVideoGenToolTests):
         tool_input = {"image_file_path": "nonexistent.jpg", "output_filename": "video.mp4"}
         result = self.tool.run_impl(tool_input)
         self.assertFalse(result.auxiliary_data["success"])
-        self.assertIn("Input image file not found", result.output_for_llm)
+        self.assertIn("Input image file not found", result.tool_output)
 
     def test_run_impl_input_image_unsupported_format(self):
         tool_input = {"image_file_path": "image.gif", "output_filename": "video.mp4"} # .gif not in SUPPORTED_IMAGE_FORMATS_MIMETYPE
         result = self.tool.run_impl(tool_input)
         self.assertFalse(result.auxiliary_data["success"])
-        self.assertIn("Input image format .gif is not supported", result.output_for_llm)
+        self.assertIn("Input image format .gif is not supported", result.tool_output)
 
     # TODO: Add tests for GCS upload/download/delete failures, API errors, timeout for image tool
 

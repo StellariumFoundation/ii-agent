@@ -84,7 +84,7 @@ class TestImageGenerateTool(unittest.TestCase):
         result = tool.run_impl(tool_input)
 
         self.assertTrue(result.auxiliary_data["success"])
-        self.assertIn("Successfully generated image", result.output_for_llm)
+        self.assertIn("Successfully generated image", result.tool_output)
         self.assertEqual(result.auxiliary_data["output_path"], "cat_hat.png")
 
         self.mock_imagen_model_instance.generate_images.assert_called_once()
@@ -104,14 +104,14 @@ class TestImageGenerateTool(unittest.TestCase):
         tool_input = {"prompt": "test", "output_filename": "test.png"}
         result = tool.run_impl(tool_input)
         self.assertFalse(result.auxiliary_data["success"])
-        self.assertIn("Imagen model could not be initialized", result.output_for_llm)
+        self.assertIn("Imagen model could not be initialized", result.tool_output)
 
     def test_run_impl_invalid_output_filename_extension(self):
         tool = self._create_tool_with_env()
         tool_input = {"prompt": "test", "output_filename": "image.jpg"} # Not .png
         result = tool.run_impl(tool_input)
         self.assertFalse(result.auxiliary_data["success"])
-        self.assertIn("output_filename must end with .png", result.output_for_llm)
+        self.assertIn("output_filename must end with .png", result.tool_output)
 
     @patch("pathlib.Path.mkdir")
     def test_run_impl_seed_and_watermark_logic(self, mock_mkdir):
@@ -140,7 +140,7 @@ class TestImageGenerateTool(unittest.TestCase):
         tool_input = {"prompt": "rare image", "output_filename": "rare.png"}
         result = tool.run_impl(tool_input)
         self.assertFalse(result.auxiliary_data["success"])
-        self.assertIn("No images returned from API", result.output_for_llm)
+        self.assertIn("No images returned from API", result.tool_output)
 
     @patch("pathlib.Path.mkdir")
     def test_run_impl_image_save_fails_safety(self, mock_mkdir):
@@ -152,7 +152,7 @@ class TestImageGenerateTool(unittest.TestCase):
         tool_input = {"prompt": "unsafe prompt", "output_filename": "unsafe.png"}
         result = tool.run_impl(tool_input)
         self.assertFalse(result.auxiliary_data["success"])
-        self.assertIn("Image generation failed due to safety restrictions", result.output_for_llm)
+        self.assertIn("Image generation failed due to safety restrictions", result.tool_output)
 
     @patch("pathlib.Path.mkdir")
     def test_run_impl_general_api_exception(self, mock_mkdir):
@@ -161,7 +161,7 @@ class TestImageGenerateTool(unittest.TestCase):
         tool_input = {"prompt": "any prompt", "output_filename": "error.png"}
         result = tool.run_impl(tool_input)
         self.assertFalse(result.auxiliary_data["success"])
-        self.assertIn("Error generating image from text: Vertex API general error", result.output_for_llm)
+        self.assertIn("Error generating image from text: Vertex API general error", result.tool_output)
 
 
 if __name__ == "__main__":

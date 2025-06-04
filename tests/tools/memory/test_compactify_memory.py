@@ -34,8 +34,8 @@ class TestCompactifyMemoryTool(unittest.TestCase):
         mock_message_history.set_message_list.assert_called_once_with(compacted_messages)
 
         self.assertIsInstance(result, ToolImplOutput)
-        self.assertEqual(result.output_for_llm, "Memory compactified.")
-        self.assertEqual(result.output_for_user, "Memory compactified.")
+        self.assertEqual(result.tool_output, "Memory compactified.")
+        self.assertEqual(result.tool_result_message, "Memory compactified.")
         self.assertTrue(result.auxiliary_data["success"])
 
     def test_run_impl_no_message_history_provided(self):
@@ -43,7 +43,7 @@ class TestCompactifyMemoryTool(unittest.TestCase):
         result = self.tool.run_impl(tool_input, message_history=None)
 
         self.assertIsInstance(result, ToolImplOutput)
-        self.assertEqual(result.output_for_llm, "Message history is required to compactify memory.")
+        self.assertEqual(result.tool_output, "Message history is required to compactify memory.")
         self.assertFalse(result.auxiliary_data["success"])
         self.mock_context_manager.apply_truncation.assert_not_called()
 
@@ -61,7 +61,7 @@ class TestCompactifyMemoryTool(unittest.TestCase):
 
         mock_message_history.set_message_list.assert_called_once_with(original_messages)
         self.assertTrue(result.auxiliary_data["success"])
-        self.assertEqual(result.output_for_llm, "Memory compactified.")
+        self.assertEqual(result.tool_output, "Memory compactified.")
 
 
 if __name__ == "__main__":

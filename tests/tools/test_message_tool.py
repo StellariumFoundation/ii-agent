@@ -18,8 +18,8 @@ class TestMessageTool(unittest.TestCase):
 
         self.assertIsInstance(result, ToolImplOutput)
         expected_msg = "Sent message to user"
-        self.assertEqual(result.output_for_llm, expected_msg)
-        self.assertEqual(result.output_for_user, expected_msg)
+        self.assertEqual(result.tool_output, expected_msg)
+        self.assertEqual(result.tool_result_message, expected_msg)
         self.assertTrue(result.auxiliary_data["success"])
 
     def test_run_impl_missing_text_assertion(self):

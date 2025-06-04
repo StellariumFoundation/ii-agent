@@ -116,13 +116,13 @@ class TestLLMUtils(unittest.TestCase):
 
     def test_convert_image_block_to_json_no_hide(self):
         source_data = {"type": "base64", "media_type": "image/jpeg", "data": "raw_image_data"}
-        msg = ImageBlock(source=source_data)
+        msg = ImageBlock(type="image", source=source_data)
         expected = {"type": "image", "source": source_data}
         self.assertEqual(convert_message_to_json(msg, hide_base64_image=False), expected)
 
     def test_convert_image_block_to_json_with_hide(self):
         source_data = {"type": "base64", "media_type": "image/jpeg", "data": "raw_image_data"}
-        msg = ImageBlock(source=source_data)
+        msg = ImageBlock(type="image", source=source_data)
         hidden_source_data = {"type": "base64", "media_type": "image/jpeg", "data": "[base64-image-data]"}
         expected = {"type": "image", "source": hidden_source_data}
         self.assertEqual(convert_message_to_json(msg, hide_base64_image=True), expected)
@@ -159,9 +159,9 @@ class TestLLMUtils(unittest.TestCase):
 
     def test_convert_basic_message_history(self):
         messages: LLMMessages = [
-            [UserContentBlock(content=TextPrompt(text="User 1"))],
-            [AssistantContentBlock(content=TextResult(text="Assistant 1"))],
-            [UserContentBlock(content=ToolCall(tool_call_id="tc1", tool_name="tool_a", tool_input={}))]
+            [TextPrompt(text="User 1")],
+            [TextResult(text="Assistant 1")],
+            [ToolCall(tool_call_id="tc1", tool_name="tool_a", tool_input={})]
         ]
         expected = [
             {"role": "user", "content": [{"type": "text", "text": "User 1"}]},
@@ -172,10 +172,10 @@ class TestLLMUtils(unittest.TestCase):
 
     def test_convert_message_history_with_hiding_images(self):
         original_messages: LLMMessages = [
-            [UserContentBlock(content=ImageBlock(source={"data": "real_img_data"}))],
-            [AssistantContentBlock(content=ToolFormattedResult(tool_call_id="tc1", tool_name="img_tool", tool_output=[
+            [ImageBlock(type="image", source={"data": "real_img_data"})],
+            [ToolFormattedResult(tool_call_id="tc1", tool_name="img_tool", tool_output=[
                 {"type": "image", "source": {"data": "another_img_data"}}
-            ]))]
+            ])]
         ]
         # Make a deepcopy for checking non-modification
         messages_copy_for_check = deepcopy(original_messages)
@@ -194,8 +194,8 @@ class TestLLMUtils(unittest.TestCase):
         self.assertEqual(tool_output[0]["source"]["data"], "[base64-image-data]")
 
         # Verify original messages were not modified due to deepcopy
-        self.assertEqual(original_messages[0][0].content.source["data"], "real_img_data", "Original user image data modified")
-        self.assertEqual(original_messages[1][0].content.tool_output[0]["source"]["data"], "another_img_data", "Original assistant tool output image data modified")
+        self.assertEqual(original_messages[0][0].source["data"], "real_img_data", "Original user image data modified")
+        self.assertEqual(original_messages[1][0].tool_output[0]["source"]["data"], "another_img_data", "Original assistant tool output image data modified")
 
 
 if __name__ == "__main__":

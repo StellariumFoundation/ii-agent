@@ -43,8 +43,8 @@ class TestDeepResearchTool(unittest.TestCase):
         mock_agent_instance.run.assert_called_once_with(on_token=on_token, is_stream=True)
 
         self.assertIsInstance(result, ToolImplOutput)
-        self.assertEqual(result.output_for_llm, "Comprehensive research report.")
-        self.assertEqual(result.output_for_user, "Task completed")
+        self.assertEqual(result.tool_output, "Comprehensive research report.")
+        self.assertEqual(result.tool_result_message, "Task completed")
         self.assertEqual(self.tool.answer, "Comprehensive research report.")
         self.assertTrue(self.tool.should_stop)
 

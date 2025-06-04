@@ -60,8 +60,8 @@ class TestTextInspectorTool(unittest.TestCase):
 
             mock_forward_method.assert_called_once_with(file_path)
             self.assertIsInstance(result, ToolImplOutput)
-            self.assertEqual(result.output_for_llm, extracted_content)
-            self.assertEqual(result.output_for_user, f"Successfully inspected file {file_path}")
+            self.assertEqual(result.tool_output, extracted_content)
+            self.assertEqual(result.tool_result_message, f"Successfully inspected file {file_path}")
             self.assertTrue(result.auxiliary_data["success"])
 
     def test_run_impl_forward_raises_exception(self):
@@ -74,8 +74,8 @@ class TestTextInspectorTool(unittest.TestCase):
 
             mock_forward_method.assert_called_once_with(file_path)
             self.assertIsInstance(result, ToolImplOutput)
-            self.assertEqual(result.output_for_llm, f"Error inspecting file: {error_message}")
-            self.assertEqual(result.output_for_user, f"Failed to inspect file {file_path}")
+            self.assertEqual(result.tool_output, f"Error inspecting file: {error_message}")
+            self.assertEqual(result.tool_result_message, f"Failed to inspect file {file_path}")
             self.assertFalse(result.auxiliary_data["success"])
 
     def test_run_impl_missing_filepath_input(self):

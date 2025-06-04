@@ -1,14 +1,16 @@
 import unittest
 from unittest.mock import MagicMock, patch, ANY
 import os
+import sys
+print(f"DEBUG SYS.PATH: {sys.path}")
 import time
 
 # Import Actual Gemini Types for constructing mock responses
 # Attempting to fix import based on typical google cloud structure
-from google.cloud.aiplatform import generativeai as genai # Using an alias for convenience
-from google.cloud.aiplatform.generativeai import types as genai_types
-from google.cloud.aiplatform.generativeai import client as genai_client
-from google.cloud.aiplatform.generativeai import errors as genai_errors
+import google.genai as genai # Using an alias for convenience
+from google.genai import types as genai_types
+from google.genai import client as genai_client
+from google.genai import errors as genai_errors
 
 
 from src.ii_agent.llm.gemini import GeminiDirectClient, generate_tool_call_id
@@ -38,7 +40,7 @@ class TestGeminiLLMClient(unittest.TestCase):
         self.mock_model_operations_instance = MagicMock() # This will mock the object that has the `generate_content` method
         self.mock_genai_client_instance.models = self.mock_model_operations_instance # client.models returns the mock for model operations
 
-        self.genai_client_patcher = patch("google.generativeai.Client", return_value=self.mock_genai_client_instance)
+        self.genai_client_patcher = patch("google.genai.Client", return_value=self.mock_genai_client_instance)
         self.mock_genai_client_constructor = self.genai_client_patcher.start()
 
         # This is where generate_content should be mocked.

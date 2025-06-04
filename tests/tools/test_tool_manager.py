@@ -1,10 +1,11 @@
+import os
 import unittest
 from unittest.mock import MagicMock, patch
 import logging
 
 from src.ii_agent.tools.tool_manager import AgentToolManager, get_system_tools # get_system_tools for potential context
 from src.ii_agent.tools.base import LLMTool, ToolImplOutput # ToolImplOutput for run return, removed ToolCallParameters
-from src.ii_agent.llm.base import ToolCall # Added ToolCall import
+from src.ii_agent.llm.base import ToolCall, LLMClient # Added ToolCall import and LLMClient
 from src.ii_agent.llm.message_history import MessageHistory
 from src.ii_agent.tools.complete_tool import CompleteTool, ReturnControlToUserTool
 

@@ -1,10 +1,11 @@
 import unittest
-from unittest.mock import patch, MagicMock, AsyncMock, ANY
+from unittest.mock import patch, MagicMock, AsyncMock, ANY, mock_open
 import asyncio
 import json
 import uuid
 from pathlib import Path
 import os
+import argparse
 
 import pytest # Using pytest for async fixtures and cleaner async tests
 from fastapi.testclient import TestClient
@@ -27,6 +28,7 @@ from ws_server import app, EventType, RealtimeEvent # global_args, parse_common_
 from src.ii_agent.utils import WorkspaceManager
 from src.ii_agent.db.manager import DatabaseManager
 from src.ii_agent.llm.base import LLMClient
+from src.ii_agent.llm.message_history import MessageHistory
 from src.ii_agent.agents.anthropic_fc import AnthropicFC
 from src.ii_agent.tools.base import LLMTool
 

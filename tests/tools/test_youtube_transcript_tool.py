@@ -4,6 +4,7 @@ from unittest.mock import patch, MagicMock, mock_open
 from src.ii_agent.tools.youtube_transcript_tool import YoutubeTranscriptTool
 from src.ii_agent.tools.base import ToolImplOutput
 import json # For creating mock JSON responses
+import requests # Added to fix NameError
 
 # Mock yt_dlp if it's not available or to control its behavior
 try:
@@ -55,8 +56,8 @@ class TestYoutubeTranscriptTool(unittest.TestCase):
 
         self.assertIsInstance(result, ToolImplOutput)
         expected_transcript = "Hello world. This is a test."
-        self.assertEqual(result.output_for_llm, expected_transcript)
-        self.assertEqual(result.output_for_user, expected_transcript) # tool_result_message is same as tool_output
+        self.assertEqual(result.tool_output, expected_transcript)
+        self.assertEqual(result.tool_result_message, expected_transcript) # tool_result_message is same as tool_output
 
     @patch('requests.get')
     @patch('yt_dlp.YoutubeDL')
@@ -80,7 +81,7 @@ class TestYoutubeTranscriptTool(unittest.TestCase):
 
         result = self.tool.run_impl({"url": video_url})
 
-        self.assertEqual(result.output_for_llm, "Auto caption.")
+        self.assertEqual(result.tool_output, "Auto caption.")
 
     @patch('yt_dlp.YoutubeDL')
     def test_run_impl_no_english_subtitles(self, mock_youtube_dl_constructor):

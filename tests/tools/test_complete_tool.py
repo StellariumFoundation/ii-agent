@@ -25,8 +25,8 @@ class TestCompleteTool(unittest.TestCase):
         result = self.tool.run_impl(tool_input)
 
         self.assertIsInstance(result, ToolImplOutput)
-        self.assertEqual(result.output_for_llm, "Task completed")
-        self.assertEqual(result.output_for_user, "Task completed")
+        self.assertEqual(result.tool_output, "Task completed")
+        self.assertEqual(result.tool_result_message, "Task completed")
         self.assertEqual(self.tool.answer, test_answer)
         self.assertTrue(self.tool.should_stop)
 
@@ -72,8 +72,8 @@ class TestReturnControlToUserTool(unittest.TestCase):
         result = self.tool.run_impl(tool_input)
 
         self.assertIsInstance(result, ToolImplOutput)
-        self.assertEqual(result.output_for_llm, "Task completed")
-        self.assertEqual(result.output_for_user, "Task completed")
+        self.assertEqual(result.tool_output, "Task completed")
+        self.assertEqual(result.tool_result_message, "Task completed")
         self.assertEqual(self.tool.answer, "Task completed") # Sets a fixed answer
         self.assertTrue(self.tool.should_stop)
 

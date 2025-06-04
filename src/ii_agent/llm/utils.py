@@ -55,19 +55,21 @@ def convert_message_to_json(
     Returns:
         dict: The JSON object.
     """
-    if str(type(message)) == str(TextPrompt) or str(type(message)) == str(TextResult):
+    message_class_name = message.__class__.__name__
+
+    if message_class_name in ("TextPrompt", "TextResult"):
         message_json = {
             "type": "text",
             "text": message.text,
         }
-    elif str(type(message)) == str(ToolCall):
+    elif message_class_name == "ToolCall":
         message_json = {
             "type": "tool_call",
             "tool_call_id": message.tool_call_id,
             "tool_name": message.tool_name,
             "tool_input": message.tool_input,
         }
-    elif str(type(message)) == str(ToolFormattedResult):
+    elif message_class_name == "ToolFormattedResult":
         message_json = {
             "type": "tool_result",
             "tool_call_id": message.tool_call_id,
@@ -81,18 +83,18 @@ def convert_message_to_json(
             )
         else:
             message_json["tool_output"] = message.tool_output
-    elif str(type(message)) == str(AnthropicRedactedThinkingBlock):
+    elif message_class_name == "AnthropicRedactedThinkingBlock":
         message_json = {
             "type": "redacted_thinking",
             "content": message.data,
         }
-    elif str(type(message)) == str(AnthropicThinkingBlock):
+    elif message_class_name == "AnthropicThinkingBlock":
         message_json = {
             "type": "thinking",
             "thinking": message.thinking,
             "signature": message.signature,
         }
-    elif str(type(message)) == str(ImageBlock):
+    elif message_class_name == "ImageBlock":
         message_json = {
             "type": "image",
             "source": message.source,
@@ -101,10 +103,10 @@ def convert_message_to_json(
             message_json["source"]["data"] = "[base64-image-data]"
     else:
         print(
-            f"Unknown message type: {type(message)}, expected one of {str(TextPrompt)}, {str(TextResult)}, {str(ToolCall)}, {str(ToolFormattedResult)}"
+            f"Unknown message type: {type(message)}, expected one of TextPrompt, TextResult, ToolCall, ToolFormattedResult, AnthropicRedactedThinkingBlock, AnthropicThinkingBlock, ImageBlock"
         )
         raise ValueError(
-            f"Unknown message type: {type(message)}, expected one of {str(TextPrompt)}, {str(TextResult)}, {str(ToolCall)}, {str(ToolFormattedResult)}"
+            f"Unknown message type: {type(message)}, expected one of TextPrompt, TextResult, ToolCall, ToolFormattedResult, AnthropicRedactedThinkingBlock, AnthropicThinkingBlock, ImageBlock"
         )
     return message_json
 

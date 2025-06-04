@@ -1,6 +1,7 @@
 import unittest
 from unittest.mock import patch, MagicMock
 import os
+import json
 
 # Import classes and functions to be tested
 from src.ii_agent.tools.visit_webpage_client import (
