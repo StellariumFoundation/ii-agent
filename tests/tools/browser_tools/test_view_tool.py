@@ -2,7 +2,8 @@ import unittest
 from unittest.mock import MagicMock, AsyncMock, patch
 
 from src.ii_agent.tools.browser_tools.view import BrowserViewTool
-from src.ii_agent.browser.browser import Browser, BrowserState, InteractiveElement # For type hinting and spec
+from src.ii_agent.browser.browser import Browser # BrowserState, InteractiveElement removed
+from src.ii_agent.browser.models import BrowserState, InteractiveElement, Coordinates, Rect # Added import for models, and Coordinates, Rect
 from src.ii_agent.tools.base import ToolImplOutput
 from src.ii_agent.tools.browser_tools import utils as browser_utils
 import asyncio
@@ -21,7 +22,7 @@ class TestBrowserViewTool(unittest.TestCase):
 
         self.tool = BrowserViewTool(browser=self.mock_browser)
 
-        self.format_screenshot_patcher = patch('src.ii_agent.tools.browser_tools.utils.format_screenshot_tool_output')
+        self.format_screenshot_patcher = patch('src.ii_agent.tools.browser_tools.view.utils.format_screenshot_tool_output') # Patched at lookup
         self.mock_format_screenshot = self.format_screenshot_patcher.start()
         self.mock_formatted_output = ToolImplOutput("formatted_view_llm", "formatted_view_user")
         self.mock_format_screenshot.return_value = self.mock_formatted_output
@@ -43,9 +44,21 @@ class TestBrowserViewTool(unittest.TestCase):
 
     def test_run_view_with_interactive_elements(self):
         # Setup interactive elements
-        mock_element1 = InteractiveElement(index=0, tag_name="button", input_type=None, text_content="Click Me", browser_agent_id="btn1", aria_label="button1", role="button", html_attributes={})
-        mock_element2 = InteractiveElement(index=1, tag_name="input", input_type="text", text_content="User\nName", browser_agent_id="input1", aria_label="username", role="textbox", html_attributes={})
-        mock_element3 = InteractiveElement(index=2, tag_name="a", input_type=None, text_content="Link", browser_agent_id="link1", aria_label="link", role="link", html_attributes={"href":"#"})
+        mock_element1 = InteractiveElement(
+            index=0, tag_name="button", text="Click Me", attributes={},
+            viewport=MagicMock(spec=Coordinates), page=MagicMock(spec=Coordinates), center=MagicMock(spec=Coordinates),
+            weight=1.0, browser_agent_id="btn1", rect=MagicMock(spec=Rect), z_index=0, input_type=None
+        )
+        mock_element2 = InteractiveElement(
+            index=1, tag_name="input", text="User\nName", attributes={},
+            viewport=MagicMock(spec=Coordinates), page=MagicMock(spec=Coordinates), center=MagicMock(spec=Coordinates),
+            weight=1.0, browser_agent_id="input1", rect=MagicMock(spec=Rect), z_index=0, input_type="text"
+        )
+        mock_element3 = InteractiveElement(
+            index=2, tag_name="a", text="Link", attributes={"href":"#"},
+            viewport=MagicMock(spec=Coordinates), page=MagicMock(spec=Coordinates), center=MagicMock(spec=Coordinates),
+            weight=1.0, browser_agent_id="link1", rect=MagicMock(spec=Rect), z_index=0, input_type=None
+        )
 
         self.mock_browser_state.interactive_elements = {
             0: mock_element1,

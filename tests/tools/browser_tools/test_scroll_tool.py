@@ -1,23 +1,25 @@
 import unittest
 from unittest.mock import MagicMock, AsyncMock, patch
 import asyncio
+from playwright.async_api import Page, Keyboard, Mouse # Added imports
 
 from src.ii_agent.tools.browser_tools.scroll import BrowserScrollDownTool, BrowserScrollUpTool
-from src.ii_agent.browser.browser import Browser, BrowserPage, Keyboard, Mouse, Viewport, BrowserState # For type hinting and spec
+from src.ii_agent.browser.browser import Browser # Removed BrowserPage, Keyboard, Mouse, Viewport, BrowserState
+from src.ii_agent.browser.models import Viewport, BrowserState # Added imports for models
 from src.ii_agent.tools.base import ToolImplOutput
 from src.ii_agent.tools.browser_tools import utils as browser_utils # To patch format_screenshot_tool_output
 
 class CommonScrollToolTests(unittest.TestCase):
     def setUp(self):
         self.mock_browser = MagicMock(spec=Browser)
-        self.mock_page = MagicMock(spec=BrowserPage)
+        self.mock_page = MagicMock(spec=Page) # Changed spec to Page
         self.mock_browser.get_current_page = AsyncMock(return_value=self.mock_page)
 
-        self.mock_keyboard = MagicMock(spec=Keyboard)
+        self.mock_keyboard = MagicMock(spec=Keyboard) # Spec is playwright Keyboard
         self.mock_keyboard.press = AsyncMock()
         self.mock_page.keyboard = self.mock_keyboard
 
-        self.mock_mouse = MagicMock(spec=Mouse)
+        self.mock_mouse = MagicMock(spec=Mouse) # Spec is playwright Mouse
         self.mock_mouse.move = AsyncMock()
         self.mock_mouse.wheel = AsyncMock()
         self.mock_page.mouse = self.mock_mouse
@@ -25,16 +27,16 @@ class CommonScrollToolTests(unittest.TestCase):
         # Mock page.url attribute, used by is_pdf_url
         self.mock_page.url = "http://example.com/somepage"
 
-        self.mock_browser_state = MagicMock(spec=BrowserState)
+        self.mock_browser_state = MagicMock(spec=BrowserState) # Spec is models.BrowserState
         self.mock_browser_state.screenshot = "scroll_screenshot_data"
-        self.mock_browser_state.viewport = Viewport(width=800, height=600) # Example viewport
+        self.mock_browser_state.viewport = Viewport(width=800, height=600) # Uses models.Viewport
         self.mock_browser.get_state = MagicMock(return_value=self.mock_browser_state) # Sync method
         self.mock_browser.update_state = AsyncMock(return_value=self.mock_browser_state) # Async method
 
         self.sleep_patcher = patch('asyncio.sleep', new_callable=AsyncMock)
         self.mock_async_sleep = self.sleep_patcher.start()
 
-        self.format_screenshot_patcher = patch('src.ii_agent.tools.browser_tools.utils.format_screenshot_tool_output')
+        self.format_screenshot_patcher = patch('src.ii_agent.tools.browser_tools.scroll.utils.format_screenshot_tool_output') # Patched at lookup
         self.mock_format_screenshot = self.format_screenshot_patcher.start()
         self.mock_formatted_output = ToolImplOutput("formatted_scroll_llm", "formatted_scroll_user")
         self.mock_format_screenshot.return_value = self.mock_formatted_output

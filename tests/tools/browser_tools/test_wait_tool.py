@@ -22,7 +22,7 @@ class TestBrowserWaitTool(unittest.TestCase):
         self.sleep_patcher = patch('asyncio.sleep', new_callable=AsyncMock)
         self.mock_async_sleep = self.sleep_patcher.start()
 
-        self.format_screenshot_patcher = patch('src.ii_agent.tools.browser_tools.utils.format_screenshot_tool_output')
+        self.format_screenshot_patcher = patch('src.ii_agent.tools.browser_tools.wait.utils.format_screenshot_tool_output') # Patched at lookup
         self.mock_format_screenshot = self.format_screenshot_patcher.start()
         self.mock_formatted_output = ToolImplOutput("formatted_wait_llm", "formatted_wait_user")
         self.mock_format_screenshot.return_value = self.mock_formatted_output

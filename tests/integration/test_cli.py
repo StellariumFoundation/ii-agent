@@ -8,7 +8,7 @@ from pathlib import Path
 import uuid
 
 # Modules to be tested or mocked
-from src.ii_agent.cli import async_main # Assuming cli.py is in src.ii_agent for direct import
+from cli import async_main # Corrected import: cli.py is at the project root
 # If cli.py is at root, the import path for its internal imports might need adjustment in test
 # For now, assume cli.py can find its imports like 'from ii_agent.core.event import ...'
 

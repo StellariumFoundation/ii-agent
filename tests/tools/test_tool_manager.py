@@ -3,7 +3,8 @@ from unittest.mock import MagicMock, patch
 import logging
 
 from src.ii_agent.tools.tool_manager import AgentToolManager, get_system_tools # get_system_tools for potential context
-from src.ii_agent.tools.base import LLMTool, ToolCallParameters, ToolImplOutput # ToolImplOutput for run return
+from src.ii_agent.tools.base import LLMTool, ToolImplOutput # ToolImplOutput for run return, removed ToolCallParameters
+from src.ii_agent.llm.base import ToolCall # Added ToolCall import
 from src.ii_agent.llm.message_history import MessageHistory
 from src.ii_agent.tools.complete_tool import CompleteTool, ReturnControlToUserTool
 
@@ -68,7 +69,7 @@ class TestAgentToolManager(unittest.TestCase):
             self.manager.get_tool("non_existent_tool")
 
     def test_run_tool_success_tool_returns_string(self):
-        tool_params = ToolCallParameters(tool_call_id="call1", tool_name="tool1", tool_input={"param": "value"})
+        tool_params = ToolCall(tool_call_id="call1", tool_name="tool1", tool_input={"param": "value"}) # Changed to ToolCall
         mock_history = MagicMock(spec=MessageHistory)
 
         # mock_tool1.run is already a MagicMock from MockLLMTool setup
@@ -79,11 +80,11 @@ class TestAgentToolManager(unittest.TestCase):
         self.mock_tool1.run.assert_called_once_with(tool_params.tool_input, mock_history)
         self.assertEqual(result, "Tool 1 direct string output")
         self.mock_logger.info.assert_any_call("Running tool: tool1")
-        self.mock_logger.info.assert_any_call(f"Tool input: {tool_params.tool_input}")
+        self.mock_logger.info.assert_any_call(f"Tool input: {tool_params.tool_input}") # Accessing tool_input attribute
         self.mock_logger.info.assert_any_call(unittest.mock.ANY) # For the log with output
 
     def test_run_tool_success_tool_returns_tuple(self):
-        tool_params = ToolCallParameters(tool_call_id="call2", tool_name="tool2", tool_input={"param": "value2"})
+        tool_params = ToolCall(tool_call_id="call2", tool_name="tool2", tool_input={"param": "value2"}) # Changed to ToolCall
         mock_history = MagicMock(spec=MessageHistory)
 
         # Configure tool2 to return a tuple
@@ -95,7 +96,7 @@ class TestAgentToolManager(unittest.TestCase):
         self.assertEqual(result, "Tool 2 output for LLM part") # run_tool extracts first part of tuple
 
     def test_run_tool_non_existent_tool(self):
-        tool_params = ToolCallParameters(tool_call_id="call_err", tool_name="unknown_tool", tool_input={})
+        tool_params = ToolCall(tool_call_id="call_err", tool_name="unknown_tool", tool_input={}) # Changed to ToolCall
         mock_history = MagicMock(spec=MessageHistory)
 
         with self.assertRaisesRegex(ValueError, "Tool with name unknown_tool not found"):

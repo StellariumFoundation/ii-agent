@@ -48,7 +48,7 @@ class TestBrowserToolBase(unittest.TestCase):
 
         # Check that the result from _run is returned by run_impl
         self.assertIsInstance(result, ToolImplOutput)
-        self.assertEqual(result.output_for_llm, "async run output")
+        self.assertEqual(result.tool_output, "async run output") # Changed output_for_llm to tool_output
 
     def test_run_impl_when_run_is_not_implemented_in_subclass(self):
         # Test the abstract nature of _run

@@ -19,7 +19,7 @@ class CommonTabToolTests(unittest.TestCase):
         self.sleep_patcher = patch('asyncio.sleep', new_callable=AsyncMock)
         self.mock_async_sleep = self.sleep_patcher.start()
 
-        self.format_screenshot_patcher = patch('src.ii_agent.tools.browser_tools.utils.format_screenshot_tool_output')
+        self.format_screenshot_patcher = patch('src.ii_agent.tools.browser_tools.tab.utils.format_screenshot_tool_output') # Patched at lookup
         self.mock_format_screenshot = self.format_screenshot_patcher.start()
         self.mock_formatted_output = ToolImplOutput("formatted_tab_llm", "formatted_tab_user")
         self.mock_format_screenshot.return_value = self.mock_formatted_output

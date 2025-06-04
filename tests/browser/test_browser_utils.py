@@ -25,6 +25,7 @@ except ImportError:
     ImageDraw = MagicMock()
     ImageFont = MagicMock()
 
+import requests # Added import
 
 class TestBrowserUtils(unittest.TestCase):
 

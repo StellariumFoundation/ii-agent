@@ -1,9 +1,10 @@
 import unittest
 from unittest.mock import MagicMock, AsyncMock, patch
 import asyncio
+from playwright.async_api import Page, Mouse # Added import for Page and Mouse
 
 from src.ii_agent.tools.browser_tools.click import BrowserClickTool
-from src.ii_agent.browser.browser import Browser, BrowserPage, Mouse # For type hinting and spec
+from src.ii_agent.browser.browser import Browser # BrowserPage and Mouse removed
 from src.ii_agent.tools.base import ToolImplOutput
 from src.ii_agent.tools.browser_tools import utils as browser_utils # To patch format_screenshot_tool_output
 
@@ -12,12 +13,12 @@ class TestBrowserClickTool(unittest.TestCase):
         self.mock_browser = MagicMock(spec=Browser)
 
         # Mock browser.get_current_page() to return a mock page
-        self.mock_page = MagicMock(spec=BrowserPage)
+        self.mock_page = MagicMock(spec=Page) # Changed spec to Page
         self.mock_browser.get_current_page = AsyncMock(return_value=self.mock_page)
 
         # Mock page.mouse.click()
         self.mock_mouse_click = AsyncMock()
-        self.mock_page.mouse = MagicMock(spec=Mouse)
+        self.mock_page.mouse = MagicMock(spec=Mouse) # Assuming Mouse is correctly from playwright
         self.mock_page.mouse.click = self.mock_mouse_click
 
         # Mock browser.context.pages for tab handling
@@ -40,8 +41,8 @@ class TestBrowserClickTool(unittest.TestCase):
         self.sleep_patcher = patch('asyncio.sleep', new_callable=AsyncMock)
         self.mock_async_sleep = self.sleep_patcher.start()
 
-        # Patch the formatting utility
-        self.format_screenshot_patcher = patch('src.ii_agent.tools.browser_tools.utils.format_screenshot_tool_output')
+        # Patch the formatting utility where it's looked up
+        self.format_screenshot_patcher = patch('src.ii_agent.tools.browser_tools.click.utils.format_screenshot_tool_output')
         self.mock_format_screenshot = self.format_screenshot_patcher.start()
         # Make it return a distinctive value for easy assertion
         self.mock_formatted_output = ToolImplOutput("formatted_output_llm", "formatted_user_msg")
@@ -100,10 +101,10 @@ class TestBrowserClickTool(unittest.TestCase):
 
     def test_run_missing_coordinates(self):
         result_x_missing = self._run_tool_async({"coordinate_y": 100})
-        self.assertEqual(result_x_missing.output_for_llm, "Must provide both coordinate_x and coordinate_y to click on an element")
+        self.assertEqual(result_x_missing.tool_output, "Must provide both coordinate_x and coordinate_y to click on an element") # Changed to tool_output
 
         result_y_missing = self._run_tool_async({"coordinate_x": 100})
-        self.assertEqual(result_y_missing.output_for_llm, "Must provide both coordinate_x and coordinate_y to click on an element")
+        self.assertEqual(result_y_missing.tool_output, "Must provide both coordinate_x and coordinate_y to click on an element") # Changed to tool_output
 
         self.mock_mouse_click.assert_not_called()
 

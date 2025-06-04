@@ -4,7 +4,7 @@ import time
 
 from anthropic import APIConnectionError, RateLimitError
 from anthropic.types import Message, TextBlock, ToolUseBlock, Usage
-from src.ii_agent.llm.anthropic import AnthropicLLMClient, Anthropic_NOT_GIVEN
+from src.ii_agent.llm.anthropic import AnthropicDirectClient, Anthropic_NOT_GIVEN # Changed AnthropicLLMClient to AnthropicDirectClient
 from src.ii_agent.llm.base import (
     LLMMessages,
     TextPrompt,
@@ -17,13 +17,13 @@ from src.ii_agent.llm.base import (
 )
 
 
-class TestAnthropicLLMClient(unittest.TestCase):
+class TestAnthropicDirectClient(unittest.TestCase): # Changed class name
     def setUp(self):
         self.model_name = "claude-3-opus-20240229"
         # Patch os.getenv for ANTHROPIC_API_KEY during client initialization
         self.env_patcher = patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test_key"})
         self.env_patcher.start()
-        self.client = AnthropicLLMClient(model_name=self.model_name, max_retries=2)
+        self.client = AnthropicDirectClient(model_name=self.model_name, max_retries=2) # Changed instantiation
 
     def tearDown(self):
         self.env_patcher.stop()
@@ -360,7 +360,7 @@ class TestAnthropicLLMClient(unittest.TestCase):
         project_id = "test-project"
         region = "us-central1"
 
-        vertex_client = AnthropicLLMClient(
+        vertex_client = AnthropicDirectClient( # Changed instantiation
             model_name=self.model_name,
             project_id=project_id,
             region=region

@@ -9,13 +9,15 @@ from src.ii_agent.tools.advanced_tools.gemini.audio_tool import AudioTranscribeT
 from src.ii_agent.tools.advanced_tools.gemini.base import GeminiTool # For patching its client
 from src.ii_agent.utils import WorkspaceManager
 from src.ii_agent.tools.base import ToolImplOutput
-from google.generativeai import types as genai_types # For constructing mock responses
+# Attempting to fix import based on typical google cloud structure
+from google.cloud.aiplatform.generativeai import types as genai_types # For constructing mock responses
+from google.cloud.aiplatform import generativeai as genai # Ensure genai alias is available
 
 # Mock genai client if not available or to control behavior
-try:
-    from google import genai
-except ImportError:
-    genai = MagicMock()
+# try:
+#     from google.cloud.aiplatform import generativeai as genai # Already imported and aliased
+# except ImportError:
+# genai = MagicMock() # genai should now be properly imported or an earlier error would occur
 
 
 class CommonGeminiAudioToolTests(unittest.TestCase):

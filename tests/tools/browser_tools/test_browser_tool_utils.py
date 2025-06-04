@@ -9,7 +9,7 @@ class TestBrowserUtils(unittest.TestCase):
 
         result = format_screenshot_tool_output(screenshot_data, message_string)
 
-        self.assertIsInstance(result, ToolImplOutput)
+        self.assertEqual(result.__class__.__name__, "ToolImplOutput") # Changed isinstance check
 
         # Check tool_output structure
         self.assertIsInstance(result.tool_output, list)

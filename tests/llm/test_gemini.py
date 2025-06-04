@@ -4,9 +4,11 @@ import os
 import time
 
 # Import Actual Gemini Types for constructing mock responses
-from google.generativeai import types as genai_types
-from google.generativeai import client as genai_client
-from google.generativeai import errors as genai_errors
+# Attempting to fix import based on typical google cloud structure
+from google.cloud.aiplatform import generativeai as genai # Using an alias for convenience
+from google.cloud.aiplatform.generativeai import types as genai_types
+from google.cloud.aiplatform.generativeai import client as genai_client
+from google.cloud.aiplatform.generativeai import errors as genai_errors
 
 
 from src.ii_agent.llm.gemini import GeminiDirectClient, generate_tool_call_id
@@ -73,25 +75,51 @@ class TestGeminiLLMClient(unittest.TestCase):
         self.assertIs(client.client, self.mock_genai_client_instance)
 
     def _prepare_mock_response(self, text_content=None, function_calls_data=None, input_tokens=10, output_tokens=20):
-        mock_response = MagicMock(spec=genai_types.GenerateContentResponse)
+        mock_response = MagicMock(spec=genai_types.GenerateContentResponse) # Keep this spec if it exists
         mock_response.text = text_content
 
-        mock_function_calls_list = []
+        mock_parts_list = []
+        if text_content:
+            text_part = MagicMock()
+            text_part.text = text_content
+            mock_parts_list.append(text_part)
+
         if function_calls_data:
             for fc_data in function_calls_data:
-                # Use genai_types.FunctionCall for closer type matching if possible, or MagicMock
-                mock_fc = MagicMock(spec=genai_types.FunctionCall)
-                mock_fc.name = fc_data["name"]
-                mock_fc.args = fc_data["args"]
-                # Gemini's FunctionCall object might not always have an ID from the API
-                # The client is expected to generate one if it's missing.
-                mock_fc.id = fc_data.get("id")
-                mock_function_calls_list.append(mock_fc)
+                function_call_part = MagicMock()
+                function_call_part.function_call.name = fc_data["name"]
+                function_call_part.function_call.args = fc_data["args"]
+                # function_call_part.function_call.id = fc_data.get("id") # ID might not be directly on function_call part
+                mock_parts_list.append(function_call_part)
 
-        # Ensure function_calls attribute exists, even if empty
-        mock_response.function_calls = mock_function_calls_list
+        # The structure of GenerateContentResponse is usually a list of candidates,
+        # and each candidate has 'content' which has 'parts'.
+        # Parts can be text or function calls.
 
-        mock_response.usage_metadata = genai_types.GenerateContentResponse.UsageMetadata(
+        mock_candidate = MagicMock()
+        mock_candidate.content.parts = mock_parts_list
+
+        # If function_calls_data is provided, the response structure might differ slightly
+        # or these are extracted from parts by the client code.
+        # For now, ensuring parts are populated.
+        # The original code also set mock_response.function_calls directly.
+        # Let's ensure `parts` are there, as that's common in Gemini API.
+        # If the client code expects `response.text` and `response.function_calls` directly,
+        # the adapter in `GeminiDirectClient` must be creating these.
+
+        # The existing mock sets response.text and response.function_calls.
+        # Let's stick to that for now, assuming the client code processes this.
+        mock_fc_list = []
+        if function_calls_data:
+             for fc_data in function_calls_data:
+                mock_fc_obj = MagicMock(spec=genai_types.FunctionCall) # was spec=genai_types.FunctionCall
+                mock_fc_obj.name = fc_data["name"]
+                mock_fc_obj.args = fc_data["args"]
+                mock_fc_list.append(mock_fc_obj)
+        mock_response.function_calls = mock_fc_list
+
+
+        mock_response.usage_metadata = genai_types.UsageMetadata( # Changed from GenerateContentResponse.UsageMetadata
             prompt_token_count=input_tokens,
             candidates_token_count=output_tokens,
         )

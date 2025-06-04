@@ -3,7 +3,7 @@ from unittest.mock import patch, MagicMock, AsyncMock # AsyncMock for LLM client
 import asyncio
 
 from src.ii_agent.tools.presentation_tool import PresentationTool
-from src.ii_agent.tools.base import ToolImplOutput, ToolCallParameters
+from src.ii_agent.tools.base import ToolImplOutput # Removed ToolCallParameters
 from src.ii_agent.llm.message_history import MessageHistory
 from src.ii_agent.llm.base import TextPrompt, AssistantContentBlock, ToolCall, TextResult # For constructing mock LLM responses
 from src.ii_agent.utils import WorkspaceManager

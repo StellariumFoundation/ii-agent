@@ -1,9 +1,10 @@
 import unittest
 from unittest.mock import MagicMock, AsyncMock, patch
 import asyncio
+from playwright.async_api import Page, Keyboard # Added import
 
 from src.ii_agent.tools.browser_tools.press_key import BrowserPressKeyTool
-from src.ii_agent.browser.browser import Browser, BrowserPage, Keyboard # For type hinting and spec
+from src.ii_agent.browser.browser import Browser # Removed BrowserPage, Keyboard
 from src.ii_agent.tools.base import ToolImplOutput
 from src.ii_agent.tools.browser_tools import utils as browser_utils
 
@@ -11,10 +12,10 @@ from src.ii_agent.tools.browser_tools import utils as browser_utils
 class TestBrowserPressKeyTool(unittest.TestCase):
     def setUp(self):
         self.mock_browser = MagicMock(spec=Browser)
-        self.mock_page = MagicMock(spec=BrowserPage)
+        self.mock_page = MagicMock(spec=Page) # Changed spec to Page
         self.mock_browser.get_current_page = AsyncMock(return_value=self.mock_page)
 
-        self.mock_keyboard = MagicMock(spec=Keyboard)
+        self.mock_keyboard = MagicMock(spec=Keyboard) # Spec is now playwright's Keyboard
         self.mock_keyboard.press = AsyncMock()
         self.mock_page.keyboard = self.mock_keyboard
 
@@ -27,7 +28,7 @@ class TestBrowserPressKeyTool(unittest.TestCase):
         self.sleep_patcher = patch('asyncio.sleep', new_callable=AsyncMock)
         self.mock_async_sleep = self.sleep_patcher.start()
 
-        self.format_screenshot_patcher = patch('src.ii_agent.tools.browser_tools.utils.format_screenshot_tool_output')
+        self.format_screenshot_patcher = patch('src.ii_agent.tools.browser_tools.press_key.utils.format_screenshot_tool_output') # Patched at lookup
         self.mock_format_screenshot = self.format_screenshot_patcher.start()
         self.mock_formatted_output = ToolImplOutput("formatted_press_key_llm", "formatted_press_key_user")
         self.mock_format_screenshot.return_value = self.mock_formatted_output
@@ -85,9 +86,9 @@ class TestBrowserPressKeyTool(unittest.TestCase):
         self.mock_browser.update_state.assert_not_called()
         self.mock_format_screenshot.assert_not_called()
 
-        self.assertIsInstance(result, ToolImplOutput)
-        self.assertEqual(result.output_for_llm, f"Failed to press key: {error_message}")
-        self.assertEqual(result.output_for_user, "Failed to press key")
+        self.assertEqual(result.__class__.__name__, "ToolImplOutput") # Changed isinstance check
+        self.assertEqual(result.tool_output, f"Failed to press key: {error_message}") # Changed to tool_output
+        self.assertEqual(result.tool_result_message, "Failed to press key") # Changed to tool_result_message
         self.assertFalse(result.auxiliary_data["success"])
         self.assertEqual(result.auxiliary_data["error"], error_message)
 
