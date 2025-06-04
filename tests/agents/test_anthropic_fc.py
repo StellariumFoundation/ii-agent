@@ -104,13 +104,13 @@ class TestAnthropicFCAgent(unittest.TestCase):
         self.assertEqual(result_str, llm_response_text)
 
         # Check history
-        self.assertEqual(self.agent.history.get_messages()[-1].content[0].text, llm_response_text)
+        self.assertEqual(self.agent.history.get_messages_for_llm()[-1].content[0].text, llm_response_text)
         # Check message queue for agent response
         self.mock_message_queue.put_nowait.assert_any_call(
             RealtimeEvent(type=EventType.AGENT_RESPONSE, content={"text": "Task completed"})
         )
         # Check user prompt in history
-        self.assertEqual(self.agent.history.get_messages()[0].content[0].text, instruction)
+        self.assertEqual(self.agent.history.get_messages_for_llm()[0].content[0].text, instruction)
 
     @patch('src.ii_agent.agents.anthropic_fc.encode_image')
     def test_run_agent_single_tool_call_success_then_text(self, mock_encode_image):
@@ -146,7 +146,7 @@ class TestAnthropicFCAgent(unittest.TestCase):
         self.assertIn(call(RealtimeEvent(type=EventType.AGENT_RESPONSE, content={'text': 'Task completed'})), put_calls)
 
         # Check history
-        history_msgs = self.agent.history.get_messages()
+        history_msgs = self.agent.history.get_messages_for_llm()
         self.assertIsInstance(history_msgs[-3].content[0], ToolCall) # LLM's tool call
         self.assertIsInstance(history_msgs[-2].content[0], ToolFormattedResult) # Result of tool call
         self.assertEqual(history_msgs[-2].content[0].tool_output, tool_result_text)
@@ -185,7 +185,7 @@ class TestAnthropicFCAgent(unittest.TestCase):
         self.assertTrue(self.agent.interrupted)
         self.assertEqual(result_str, AGENT_INTERRUPT_MESSAGE)
         # Check that a fake assistant turn for interruption was added
-        last_history_msg_content = self.agent.history.get_messages()[-1].content[0].text
+        last_history_msg_content = self.agent.history.get_messages_for_llm()[-1].content[0].text
         self.assertEqual(last_history_msg_content, AGENT_INTERRUPT_FAKE_MODEL_RSP)
 
 
@@ -205,7 +205,7 @@ class TestAnthropicFCAgent(unittest.TestCase):
         self.assertEqual(result_str, TOOL_RESULT_INTERRUPT_MESSAGE)
         # Check history: tool result should be the interrupt message,
         # and a fake assistant turn for tool call interruption
-        history_msgs = self.agent.history.get_messages()
+        history_msgs = self.agent.history.get_messages_for_llm()
         self.assertEqual(history_msgs[-2].content[0].tool_output, TOOL_RESULT_INTERRUPT_MESSAGE)
         self.assertEqual(history_msgs[-1].content[0].text, TOOL_CALL_INTERRUPT_FAKE_MODEL_RSP)
 
@@ -216,7 +216,7 @@ class TestAnthropicFCAgent(unittest.TestCase):
 
         self.agent.clear()
 
-        self.assertEqual(len(self.agent.history.get_messages()), 0)
+        self.assertEqual(len(self.agent.history.get_messages_for_llm()), 0)
         self.assertFalse(self.agent.interrupted)
 
     # TODO: Test _process_messages, file attachments, tool validation errors

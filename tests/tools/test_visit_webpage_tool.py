@@ -42,8 +42,8 @@ class TestVisitWebpageTool(unittest.TestCase):
 
         self.mock_visit_client_instance.forward.assert_called_once_with(url)
         self.assertIsInstance(result, ToolImplOutput)
-        self.assertEqual(result.output_for_llm, expected_content)
-        self.assertEqual(result.output_for_user, f"Webpage {url} successfully visited using MockedClient")
+        self.assertEqual(result.tool_output, expected_content)
+        self.assertEqual(result.tool_result_message, f"Webpage {url} successfully visited using MockedClient")
         self.assertTrue(result.auxiliary_data["success"])
 
     def test_run_impl_arxiv_url_transformation(self):
@@ -65,8 +65,8 @@ class TestVisitWebpageTool(unittest.TestCase):
         result = self.tool.run_impl(tool_input)
 
         self.assertFalse(result.auxiliary_data["success"])
-        self.assertIn(f"Failed to extract content from {url}", result.output_for_llm)
-        self.assertIn(f"Failed to extract content from {url}", result.output_for_user)
+        self.assertIn(f"Failed to extract content from {url}", result.tool_output)
+        self.assertIn(f"Failed to extract content from {url}", result.tool_result_message)
 
     def test_run_impl_network_error(self):
         url = "http://example.com/timeout"
@@ -76,8 +76,8 @@ class TestVisitWebpageTool(unittest.TestCase):
         result = self.tool.run_impl(tool_input)
 
         self.assertFalse(result.auxiliary_data["success"])
-        self.assertIn(f"Failed to access {url}", result.output_for_llm)
-        self.assertIn("network error", result.output_for_user)
+        self.assertIn(f"Failed to access {url}", result.tool_output)
+        self.assertIn("network error", result.tool_result_message)
 
     def test_run_impl_generic_webpage_visit_exception(self):
         url = "http://example.com/genericerror"
@@ -87,8 +87,8 @@ class TestVisitWebpageTool(unittest.TestCase):
         result = self.tool.run_impl(tool_input)
 
         self.assertFalse(result.auxiliary_data["success"])
-        self.assertIn(f"Failed to visit {url}", result.output_for_llm)
-        self.assertIn(f"Failed to visit {url}", result.output_for_user)
+        self.assertIn(f"Failed to visit {url}", result.tool_output)
+        self.assertIn(f"Failed to visit {url}", result.tool_result_message)
 
     def test_run_impl_missing_url_input(self):
         # This should ideally be caught by schema validation in LLMTool.execute

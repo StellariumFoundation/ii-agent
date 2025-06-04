@@ -71,7 +71,7 @@ class TestPresentationTool(unittest.TestCase):
             {"command": f"cd {self.mock_workspace_manager.root}/presentation/reveal.js && npm install && cd {self.mock_workspace_manager.root}"}
         )
         self.assertTrue(result.auxiliary_data["success"])
-        self.assertEqual(result.output_for_llm, "Init setup seems complete.")
+        self.assertEqual(result.tool_output, "Init setup seems complete.")
 
     def test_init_action_git_clone_fails(self):
         self.mock_bash_tool_instance.run_impl.return_value = ToolImplOutput(
@@ -82,7 +82,7 @@ class TestPresentationTool(unittest.TestCase):
         result = self.tool.run_impl(tool_input)
 
         self.assertFalse(result.auxiliary_data["success"])
-        self.assertIn("Failed to clone reveal.js repository", result.output_for_llm)
+        self.assertIn("Failed to clone reveal.js repository", result.tool_output)
 
     def test_init_action_npm_install_fails(self):
         self.mock_bash_tool_instance.run_impl.side_effect = [
@@ -93,7 +93,7 @@ class TestPresentationTool(unittest.TestCase):
         result = self.tool.run_impl(tool_input)
 
         self.assertFalse(result.auxiliary_data["success"])
-        self.assertIn("Failed to install dependencies", result.output_for_llm)
+        self.assertIn("Failed to install dependencies", result.tool_output)
 
     def test_non_init_action_single_llm_turn_no_tool_call(self):
         # Test 'create' action, simulating LLM returns text without calling sub-tools
@@ -104,7 +104,7 @@ class TestPresentationTool(unittest.TestCase):
         result = self.tool.run_impl(tool_input)
 
         self.assertTrue(result.auxiliary_data["success"])
-        self.assertEqual(result.output_for_llm, final_text_response)
+        self.assertEqual(result.tool_output, final_text_response)
         # Check that history was updated
         # self.tool.history is reset in init, so for non-init, it uses the instance's history
         self.assertEqual(self.tool.history.get_messages_for_llm()[-1].content[0].text, final_text_response)
@@ -134,12 +134,12 @@ class TestPresentationTool(unittest.TestCase):
         result = self.tool.run_impl(tool_input)
 
         self.assertTrue(result.auxiliary_data["success"])
-        self.assertEqual(result.output_for_llm, "Update complete.")
+        self.assertEqual(result.tool_output, "Update complete.")
 
         self.assertEqual(self.mock_llm_client.generate.call_count, 2)
         self.mock_str_replace_tool_instance.run.assert_called_once()
         # Check history for tool call and result
-        messages = self.tool.history.get_messages()
+        messages = self.tool.history.get_messages_for_llm()
         self.assertIsInstance(messages[-2].content[0], ToolCall) # Assistant's tool call
         self.assertEqual(messages[-2].content[0].tool_call_id, tool_call_id)
         self.assertIsInstance(messages[-1].content[0], ToolFormattedResult) # User's tool result (simulated)
@@ -158,7 +158,7 @@ class TestPresentationTool(unittest.TestCase):
         result = self.tool.run_impl(tool_input)
 
         self.assertFalse(result.auxiliary_data["success"])
-        self.assertIn(f"Action 'final_check' did not complete after {self.tool.max_turns} turns", result.output_for_llm)
+        self.assertIn(f"Action 'final_check' did not complete after {self.tool.max_turns} turns", result.tool_output)
         self.assertEqual(self.mock_llm_client.generate.call_count, self.tool.max_turns)
 
 

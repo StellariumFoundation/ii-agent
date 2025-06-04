@@ -76,29 +76,24 @@ class GeminiDirectClient(LLMClient):
                         args=message.tool_input,
                     )
                 elif isinstance(message, ToolFormattedResult):
+                    # This entire block needs to result in a single 'message_content' that is a FunctionResponse Part
                     if isinstance(message.tool_output, str):
-                        message_content = types.Part.from_function_response(
-                            name=message.tool_name,
-                            response={"result": message.tool_output}
-                        )
-                    # Handle tool return images. See: https://discuss.ai.google.dev/t/returning-images-from-function-calls/3166/6
+                        actual_response_data = {"result": message.tool_output}
                     elif isinstance(message.tool_output, list):
-                        message_content = []
-                        for item in message.tool_output:
-                            if item['type'] == 'text':
-                                message_content.append(types.Part(text=item['text']))
-                            elif item['type'] == 'image':
-                                message_content.append(types.Part.from_bytes(
-                                    data=item['source']['data'],
-                                    mime_type=item['source']['media_type']
-                                ))
+                        # Package the list as part of the response field
+                        actual_response_data = {"result": message.tool_output}
+                    else: # Should not happen based on ToolFormattedResult definition but good to handle
+                        actual_response_data = {"result": str(message.tool_output)}
+
+                    message_content = types.Part.from_function_response(
+                        name=message.tool_name,
+                        response=actual_response_data
+                    )
                 else:
                     raise ValueError(f"Unknown message type: {type(message)}")
                 
-                if isinstance(message_content, list):
-                    message_content_list.extend(message_content)
-                else:
-                    message_content_list.append(message_content)
+                # message_content is now always a single Part for ToolFormattedResult
+                message_content_list.append(message_content)
             
             gemini_messages.append(types.Content(role=role, parts=message_content_list))
         

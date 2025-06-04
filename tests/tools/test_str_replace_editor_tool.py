@@ -87,7 +87,7 @@ class TestStrReplaceEditorTool(unittest.TestCase):
         result = self.tool.run_impl(tool_input)
 
         self.assertTrue(result.success)
-        self.assertIn(f"The file {file_path_str} has been edited.", result.output_for_llm)
+        self.assertIn(f"The file {file_path_str} has been edited.", result.tool_output)
         expected_new_content = "Hello world\nThis was a test\nHello again world"
         specific_mock_path.write_text.assert_called_once_with(expected_new_content)
         self.assertEqual(len(self.tool._file_history[specific_mock_path]), 1)
@@ -109,7 +109,7 @@ class TestStrReplaceEditorTool(unittest.TestCase):
         result = self.tool.run_impl(tool_input)
 
         self.assertFalse(result.success)
-        self.assertIn("did not appear verbatim", result.output_for_llm)
+        self.assertIn("did not appear verbatim", result.tool_output)
 
     @patch("pathlib.Path.read_text")
     @patch("pathlib.Path.is_dir")
@@ -126,7 +126,7 @@ class TestStrReplaceEditorTool(unittest.TestCase):
         result = self.tool.run_impl(tool_input)
 
         self.assertFalse(result.success)
-        self.assertIn("Multiple occurrences", result.output_for_llm)
+        self.assertIn("Multiple occurrences", result.tool_output)
 
     @patch("pathlib.Path.write_text")
     @patch("pathlib.Path.read_text")
@@ -149,7 +149,7 @@ class TestStrReplaceEditorTool(unittest.TestCase):
         }
         result = self.tool_ignore_indent.run_impl(tool_input) # Use the ignore_indent tool
 
-        self.assertTrue(result.success, msg=result.output_for_llm)
+        self.assertTrue(result.success, msg=result.tool_output)
         # new_str should be re-indented according to the first line of the match ("  Indented line")
         expected_new_content = "  New line\n    New indented"
         specific_mock_path.write_text.assert_called_once_with(expected_new_content)
@@ -180,10 +180,10 @@ class TestStrReplaceEditorTool(unittest.TestCase):
         tool_input_undo = {"command": "undo_edit", "path": file_path_str}
         result_undo = self.tool.run_impl(tool_input_undo)
 
-        self.assertTrue(result_undo.success, msg=result_undo.output_for_llm)
+        self.assertTrue(result_undo.success, msg=result.tool_output)
         specific_mock_path.write_text.assert_called_with(original_content) # Should write back original
         self.assertEqual(len(self.tool._file_history[specific_mock_path]), 0) # History item popped
-        self.assertIn(f"Last edit to {file_path_str} undone successfully.", result_undo.output_for_llm)
+        self.assertIn(f"Last edit to {file_path_str} undone successfully.", result_undo.tool_output)
 
     def test_undo_edit_no_history(self):
         file_path_str = "test_no_undo.txt"
@@ -196,7 +196,7 @@ class TestStrReplaceEditorTool(unittest.TestCase):
         result_undo = self.tool.run_impl(tool_input_undo)
 
         self.assertFalse(result_undo.success)
-        self.assertIn(f"No edit history found for {file_path_str}", result_undo.output_for_llm)
+        self.assertIn(f"No edit history found for {file_path_str}", result_undo.tool_output)
 
     @patch("pathlib.Path.write_text")
     @patch("pathlib.Path.read_text")
@@ -223,7 +223,7 @@ class TestStrReplaceEditorTool(unittest.TestCase):
         }
         result = self.tool_expand_tabs.run_impl(tool_input) # Use tool with expand_tabs=True
 
-        self.assertTrue(result.success, msg=result.output_for_llm)
+        self.assertTrue(result.success, msg=result.tool_output)
 
         expected_old_str_expanded = "with    tabs"
         expected_new_str_expanded = "no      tabs" # Note: if new_str had different tab stops, it would be different

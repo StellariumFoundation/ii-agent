@@ -65,8 +65,8 @@ class TestImageSearchTool(unittest.TestCase):
 
         self.mock_image_search_client_instance.forward.assert_called_once_with(query)
         self.assertIsInstance(result, ToolImplOutput)
-        self.assertEqual(result.output_for_llm, expected_client_output_str)
-        self.assertIn(f"Image Search Results with query: {query} successfully retrieved", result.output_for_user)
+        self.assertEqual(result.tool_output, expected_client_output_str)
+        self.assertIn(f"Image Search Results with query: {query} successfully retrieved", result.tool_result_message)
         self.assertTrue(result.auxiliary_data["success"])
 
     def test_run_impl_client_raises_exception(self):
@@ -80,7 +80,7 @@ class TestImageSearchTool(unittest.TestCase):
         self.mock_image_search_client_instance.forward.assert_called_once_with(query)
         self.assertIsInstance(result, ToolImplOutput)
         self.assertFalse(result.auxiliary_data["success"])
-        self.assertIn(f"Error searching the web with MockedImageSearchClient: {error_message}", result.output_for_llm)
+        self.assertIn(f"Error searching the web with MockedImageSearchClient: {error_message}", result.tool_output)
 
     def test_run_impl_client_is_none_should_fail_gracefully_or_be_prevented(self):
         # Simulate that the client was None during tool init
@@ -96,7 +96,7 @@ class TestImageSearchTool(unittest.TestCase):
         # self.tool.is_available = MagicMock(return_value=False) # Or ensure client is None
         # result = self.tool.run_impl(tool_input)
         # self.assertFalse(result.auxiliary_data["success"])
-        # self.assertIn("Image search client is not available", result.output_for_llm)
+        # self.assertIn("Image search client is not available", result.tool_output)
 
 
 if __name__ == "__main__":

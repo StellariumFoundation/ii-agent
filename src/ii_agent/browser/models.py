@@ -1,7 +1,7 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field # Re-added dataclass
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
 
@@ -41,7 +41,7 @@ class InteractiveElement(BaseModel):
 
     index: int
     tag_name: str
-    text: str
+    text: str = Field(..., alias='textContent') # Added Field with alias
     attributes: dict[str, str]
     viewport: Coordinates
     page: Coordinates

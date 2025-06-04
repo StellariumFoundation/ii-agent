@@ -33,21 +33,21 @@ logging.disable(logging.CRITICAL)
 
 class TestCliAsyncMain(unittest.TestCase):
 
-    @patch('src.ii_agent.cli.argparse.ArgumentParser.parse_args')
-    @patch('src.ii_agent.cli.create_workspace_manager_for_connection')
-    @patch('src.ii_agent.cli.DatabaseManager')
-    @patch('src.ii_agent.cli.get_client')
-    @patch('src.ii_agent.cli.LLMSummarizingContextManager') # Default context_manager
-    @patch('src.ii_agent.cli.AmortizedForgettingContextManager') # Alt context_manager
-    @patch('src.ii_agent.cli.TokenCounter')
-    @patch('src.ii_agent.cli.get_system_tools')
-    @patch('src.ii_agent.cli.AnthropicFC')
+    @patch('cli.argparse.ArgumentParser.parse_args')
+    @patch('cli.create_workspace_manager_for_connection')
+    @patch('cli.DatabaseManager')
+    @patch('cli.get_client')
+    @patch('cli.LLMSummarizingContextManager') # Default context_manager
+    @patch('cli.AmortizedForgettingContextManager') # Alt context_manager
+    @patch('cli.TokenCounter')
+    @patch('cli.get_system_tools')
+    @patch('cli.AnthropicFC')
     @patch('asyncio.Queue')
     @patch('builtins.input')
-    @patch('src.ii_agent.cli.Console') # Mock Rich Console
+    @patch('cli.Console') # Mock Rich Console
     @patch('asyncio.loop.run_in_executor', new_callable=AsyncMock) # Mock the executor call
-    @patch('src.ii_agent.cli.logging.FileHandler') # Mock FileHandler to avoid creating log files
-    @patch('src.ii_agent.cli.logging.StreamHandler')
+    @patch('cli.logging.FileHandler') # Mock FileHandler to avoid creating log files
+    @patch('cli.logging.StreamHandler')
     @patch('os.path.exists') # Mock os.path.exists for log file removal check
     @patch('os.remove') # Mock os.remove for log file removal
     async def _run_async_main_with_mocks(

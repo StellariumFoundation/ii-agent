@@ -38,7 +38,7 @@ class TestSlideDeckInitTool(unittest.TestCase):
         mock_subprocess_run.assert_has_calls(expected_calls)
 
         self.assertTrue(result.auxiliary_data["success"])
-        self.assertIn("Successfully initialized slide deck", result.output_for_llm)
+        self.assertIn("Successfully initialized slide deck", result.tool_output)
 
     @patch('os.makedirs')
     @patch('subprocess.run')
@@ -48,7 +48,7 @@ class TestSlideDeckInitTool(unittest.TestCase):
         result = self.tool.run_impl({})
 
         self.assertFalse(result.auxiliary_data["success"])
-        self.assertIn("Failed to clone reveal.js repository: git clone error", result.output_for_llm)
+        self.assertIn("Failed to clone reveal.js repository: git clone error", result.tool_output)
 
     @patch('os.makedirs')
     @patch('subprocess.run')
@@ -60,13 +60,13 @@ class TestSlideDeckInitTool(unittest.TestCase):
         result = self.tool.run_impl({})
 
         self.assertFalse(result.auxiliary_data["success"])
-        self.assertIn("Failed to install dependencies: npm install error", result.output_for_llm)
+        self.assertIn("Failed to install dependencies: npm install error", result.tool_output)
 
     @patch('os.makedirs', side_effect=Exception("makedirs failed"))
     def test_run_impl_makedirs_fails(self, mock_makedirs):
         result = self.tool.run_impl({})
         self.assertFalse(result.auxiliary_data["success"])
-        self.assertIn("Error initializing slide deck: makedirs failed", result.output_for_llm)
+        self.assertIn("Error initializing slide deck: makedirs failed", result.tool_output)
 
 
 class TestSlideDeckCompleteTool(unittest.TestCase):
@@ -95,7 +95,7 @@ class TestSlideDeckCompleteTool(unittest.TestCase):
         mock_file().write.assert_called_once_with(expected_final_content)
 
         self.assertTrue(result.auxiliary_data["success"])
-        self.assertIn("Successfully combined slides", result.output_for_llm)
+        self.assertIn("Successfully combined slides", result.tool_output)
         self.assertEqual(result.auxiliary_data["slide_paths"], slide_paths)
 
 
@@ -106,7 +106,7 @@ class TestSlideDeckCompleteTool(unittest.TestCase):
         result = self.tool.run_impl(tool_input)
 
         self.assertFalse(result.auxiliary_data["success"])
-        self.assertIn("must be in the slides/ subdirectory", result.output_for_llm)
+        self.assertIn("must be in the slides/ subdirectory", result.tool_output)
 
     def test_run_impl_read_index_html_fails(self):
         slide_paths = ["./slides/good.html"]
@@ -116,7 +116,7 @@ class TestSlideDeckCompleteTool(unittest.TestCase):
             result = self.tool.run_impl(tool_input)
 
         self.assertFalse(result.auxiliary_data["success"])
-        self.assertIn("Error reading `index.html`: Cannot read index.html", result.output_for_llm)
+        self.assertIn("Error reading `index.html`: Cannot read index.html", result.tool_output)
 
 
 if __name__ == "__main__":

@@ -35,7 +35,7 @@ class TestBrowserUtils(unittest.TestCase):
     def _create_mock_element(self, index, rect_coords, tag="div", weight=1.0, z_index=0, browser_agent_id=""):
         # Simplified element for geometry tests
         return InteractiveElement(
-            index=index, tag_name=tag, text_content=f"el{index}", attributes={},
+            index=index, tag_name=tag, text=f"el{index}", attributes={}, # Changed text_content to text
             viewport=Coordinates(x=0,y=0), page=Coordinates(x=0,y=0), center=Coordinates(x=0,y=0), # Dummy
             weight=weight, browser_agent_id=browser_agent_id or f"id{index}", rect=self._create_mock_rect(*rect_coords), z_index=z_index
         )

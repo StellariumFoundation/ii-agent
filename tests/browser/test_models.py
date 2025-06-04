@@ -42,7 +42,7 @@ class TestBrowserModels(unittest.TestCase):
         element = InteractiveElement(
             index=1,
             tag_name="button",
-            text_content="Click Me", # Pydantic will map text_content to text if alias is used for input
+            text="Click Me", # Changed text_content to text
             attributes={"id": "btn1", "class": "submit"},
             viewport=viewport_coords,
             page=page_coords,
@@ -72,7 +72,7 @@ class TestBrowserModels(unittest.TestCase):
         }
         element_from_camel = InteractiveElement.model_validate(data_camel_case)
         self.assertEqual(element_from_camel.tag_name, "input")
-        self.assertEqual(element_from_camel.text_content, "User") # text_content is an alias for text
+        self.assertEqual(element_from_camel.text, "User") # Access field by its actual name 'text'
         self.assertEqual(element_from_camel.browser_agent_id, "id2")
 
 

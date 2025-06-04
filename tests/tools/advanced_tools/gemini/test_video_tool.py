@@ -10,8 +10,8 @@ from src.ii_agent.tools.advanced_tools.gemini.base import GeminiTool # For patch
 from src.ii_agent.utils import WorkspaceManager
 from src.ii_agent.tools.base import ToolImplOutput
 # Attempting to fix import based on typical google cloud structure
-from google.cloud.aiplatform.generativeai import types as genai_types # For constructing mock responses and FileData
-from google.cloud.aiplatform import generativeai as genai # Ensure genai alias is available
+from google.generativeai import types as genai_types # For constructing mock responses and FileData
+import google.generativeai as genai # Ensure genai alias is available
 
 
 # Mock genai client if not available or to control behavior
@@ -29,15 +29,15 @@ class TestYoutubeVideoUnderstandingTool(unittest.TestCase):
         self.env_patcher = patch.dict(os.environ, {"GEMINI_API_KEY": "test_gemini_key"})
         self.env_patcher.start()
 
-        self.genai_client_patcher = patch('google.generativeai.Client')
+        self.genai_client_patcher = patch('google.generativeai.GenerativeModel') # Changed from Client
         self.MockGenaiClientConstructor = self.genai_client_patcher.start()
 
-        self.mock_gemini_client_instance = MagicMock(spec=genai.Client)
+        self.mock_gemini_client_instance = MagicMock(spec=genai.GenerativeModel) # Changed spec
         self.MockGenaiClientConstructor.return_value = self.mock_gemini_client_instance
 
         self.mock_generate_content_method = MagicMock()
-        self.mock_gemini_client_instance.models = MagicMock()
-        self.mock_gemini_client_instance.models.generate_content = self.mock_generate_content_method
+        # Assuming generate_content is directly on the client instance now
+        self.mock_gemini_client_instance.generate_content = self.mock_generate_content_method
 
         self.tool = YoutubeVideoUnderstandingTool(workspace_manager=self.mock_workspace_manager, model="gemini-video-model")
 
@@ -78,8 +78,8 @@ class TestYoutubeVideoUnderstandingTool(unittest.TestCase):
         self.assertEqual(content_arg.parts[1].text, user_query)
 
         self.assertIsInstance(result, ToolImplOutput)
-        self.assertEqual(result.output_for_llm, "This video is about testing.")
-        self.assertEqual(result.output_for_user, "This video is about testing.")
+        self.assertEqual(result.tool_output, "This video is about testing.")
+        self.assertEqual(result.tool_result_message, "This video is about testing.")
 
     def test_run_impl_gemini_api_error(self):
         self.mock_generate_content_method.side_effect = Exception("Gemini API video failed")
@@ -88,7 +88,7 @@ class TestYoutubeVideoUnderstandingTool(unittest.TestCase):
         with patch('builtins.print') as mock_print: # Suppress print(e)
             result = self.tool.run_impl(tool_input)
 
-        self.assertEqual(result.output_for_llm, "Error analyzing the Youtube video, try again later.")
+        self.assertEqual(result.tool_output, "Error analyzing the Youtube video, try again later.")
         mock_print.assert_called_once()
 
     def test_run_impl_malformed_response_no_candidates(self):
@@ -99,7 +99,7 @@ class TestYoutubeVideoUnderstandingTool(unittest.TestCase):
 
         with patch('builtins.print') as mock_print:
             result = self.tool.run_impl(tool_input)
-        self.assertEqual(result.output_for_llm, "Error analyzing the Youtube video, try again later.")
+        self.assertEqual(result.tool_output, "Error analyzing the Youtube video, try again later.")
         # Expect an IndexError when accessing candidates[0]
         self.assertTrue(any("list index out of range" in str(arg[0][0]) for arg in mock_print.call_args_list))
 
@@ -116,7 +116,7 @@ class TestYoutubeVideoUnderstandingTool(unittest.TestCase):
 
         with patch('builtins.print') as mock_print:
             result = self.tool.run_impl(tool_input)
-        self.assertEqual(result.output_for_llm, "Error analyzing the Youtube video, try again later.")
+        self.assertEqual(result.tool_output, "Error analyzing the Youtube video, try again later.")
         # Expect an IndexError when accessing parts[0]
         self.assertTrue(any("list index out of range" in str(arg[0][0]) for arg in mock_print.call_args_list))
 

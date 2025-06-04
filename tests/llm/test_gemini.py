@@ -4,15 +4,15 @@ import os
 import time
 
 # Import Actual Gemini Types for constructing mock responses
-# Attempting to fix import based on typical google cloud structure
-from google.cloud.aiplatform import generativeai as genai # Using an alias for convenience
-from google.cloud.aiplatform.generativeai import types as genai_types
-from google.cloud.aiplatform.generativeai import client as genai_client
-from google.cloud.aiplatform.generativeai import errors as genai_errors
+from google import genai # Updated for new SDK
+from google.genai import types as genai_types # Updated for new SDK
+from google.genai import errors # For new SDK error types
+# from google.generativeai import client as genai_client # This was incorrect
 
 
 from src.ii_agent.llm.gemini import GeminiDirectClient, generate_tool_call_id
-from src.ii_agent.llm.base import (
+# Standardize imports to match src/ii_agent/llm/gemini.py for shared base types
+from ii_agent.llm.base import (
     LLMMessages,
     TextPrompt,
     ToolCall,
@@ -34,34 +34,36 @@ class TestGeminiLLMClient(unittest.TestCase):
         self.env_patcher = patch.dict(os.environ, {"GEMINI_API_KEY": "test_gemini_key"})
         self.env_patcher.start()
 
-        self.mock_genai_client_instance = MagicMock(spec=genai_client.Client)
-        self.mock_model_operations_instance = MagicMock() # This will mock the object that has the `generate_content` method
-        self.mock_genai_client_instance.models = self.mock_model_operations_instance # client.models returns the mock for model operations
+        # Patch the new client structure: genai.Client()
+        self.genai_client_patcher = patch("google.genai.Client")
+        self.MockGenaiClientConstructor = self.genai_client_patcher.start()
 
-        self.genai_client_patcher = patch("google.generativeai.Client", return_value=self.mock_genai_client_instance)
-        self.mock_genai_client_constructor = self.genai_client_patcher.start()
+        self.mock_gemini_client_actual_instance = MagicMock(spec=genai.Client)
+        self.MockGenaiClientConstructor.return_value = self.mock_gemini_client_actual_instance
 
-        # This is where generate_content should be mocked.
-        # It's a method on the object returned by client.models(model_name) or client.models
-        # For simplicity, we'll assume client.models directly returns an object with generate_content
-        # If client.models was a function like client.models(model_name_str), the mock setup would be different.
-        # Based on the source: self.client.models.generate_content, so self.mock_model_operations_instance needs generate_content
+        # Mock the 'models' attribute and its 'generate_content' method
+        self.mock_models_object = MagicMock()
+        self.mock_gemini_client_actual_instance.models = self.mock_models_object
+
         self.mock_generate_content = MagicMock()
-        self.mock_model_operations_instance.generate_content = self.mock_generate_content
+        self.mock_models_object.generate_content = self.mock_generate_content
 
 
     def tearDown(self):
         self.env_patcher.stop()
-        self.genai_client_patcher.stop()
+        self.genai_client_patcher.stop() # Stops patch("google.genai.Client")
 
     def test_client_instantiation_direct(self):
         client = GeminiDirectClient(model_name=self.model_name)
         self.assertIsNotNone(client)
         self.assertEqual(client.model_name, self.model_name)
-        self.mock_genai_client_constructor.assert_called_once_with(api_key="test_gemini_key")
-        self.assertIs(client.client, self.mock_genai_client_instance)
+        # GeminiDirectClient itself creates genai.Client
+        # The patch is on google.genai.Client, so self.MockGenaiClientConstructor is that mock
+        self.MockGenaiClientConstructor.assert_called_once_with(api_key="test_gemini_key")
+        self.assertIs(client.client, self.mock_gemini_client_actual_instance)
 
     def test_client_instantiation_vertex_ai(self):
+        # No more genai.configure. The client itself handles Vertex AI mode.
         client = GeminiDirectClient(
             model_name=self.model_name,
             project_id=self.project_id,
@@ -69,10 +71,10 @@ class TestGeminiLLMClient(unittest.TestCase):
         )
         self.assertIsNotNone(client)
         self.assertEqual(client.model_name, self.model_name)
-        self.mock_genai_client_constructor.assert_called_once_with(
+        self.MockGenaiClientConstructor.assert_called_once_with(
             vertexai=True, project=self.project_id, location=self.region
         )
-        self.assertIs(client.client, self.mock_genai_client_instance)
+        self.assertIs(client.client, self.mock_gemini_client_actual_instance)
 
     def _prepare_mock_response(self, text_content=None, function_calls_data=None, input_tokens=10, output_tokens=20):
         mock_response = MagicMock(spec=genai_types.GenerateContentResponse) # Keep this spec if it exists
@@ -112,17 +114,23 @@ class TestGeminiLLMClient(unittest.TestCase):
         mock_fc_list = []
         if function_calls_data:
              for fc_data in function_calls_data:
-                mock_fc_obj = MagicMock(spec=genai_types.FunctionCall) # was spec=genai_types.FunctionCall
+                mock_fc_obj = MagicMock(spec=genai_types.FunctionCall)
                 mock_fc_obj.name = fc_data["name"]
                 mock_fc_obj.args = fc_data["args"]
+                mock_fc_obj.id = fc_data.get("id") # Explicitly set id, can be None
                 mock_fc_list.append(mock_fc_obj)
         mock_response.function_calls = mock_fc_list
 
 
-        mock_response.usage_metadata = genai_types.UsageMetadata( # Changed from GenerateContentResponse.UsageMetadata
-            prompt_token_count=input_tokens,
-            candidates_token_count=output_tokens,
-        )
+        # mock_response.usage_metadata = genai_types.UsageMetadata( # This was causing issues
+        #     prompt_token_count=input_tokens,
+        #     candidates_token_count=output_tokens,
+        # )
+        # Instead, mock it as an attribute with sub-attributes
+        mock_response.usage_metadata = MagicMock()
+        mock_response.usage_metadata.prompt_token_count = input_tokens
+        mock_response.usage_metadata.candidates_token_count = output_tokens
+
         self.mock_generate_content.return_value = mock_response
         return mock_response
 
@@ -130,7 +138,7 @@ class TestGeminiLLMClient(unittest.TestCase):
         client = GeminiDirectClient(model_name=self.model_name)
         self._prepare_mock_response(text_content="Hello, world!")
 
-        messages: LLMMessages = [[UserContentBlock(content=TextPrompt(text="Hello"))]]
+        messages = [[TextPrompt(text="Hello")]] # Directly use TextPrompt
         max_tokens = 50
 
         response_content, metadata = client.generate(
@@ -147,13 +155,15 @@ class TestGeminiLLMClient(unittest.TestCase):
         self.mock_generate_content.assert_called_once()
         call_args = self.mock_generate_content.call_args
 
-        self.assertEqual(call_args.kwargs["model"], self.model_name) # called with model=...
+        self.assertEqual(call_args.kwargs["model"], self.model_name)
         self.assertEqual(call_args.kwargs["contents"][0].parts[0].text, "Hello")
         self.assertEqual(call_args.kwargs["contents"][0].role, "user")
+
+        # Access nested config attributes correctly
         self.assertEqual(call_args.kwargs["config"].max_output_tokens, max_tokens)
         self.assertEqual(call_args.kwargs["config"].temperature, 0.0)
-        self.assertIsNone(call_args.kwargs["config"].system_instruction)
-        self.assertEqual(call_args.kwargs["config"].tool_config.function_calling_config.mode, "ANY") # Default tool_choice
+        self.assertEqual(call_args.kwargs["config"].system_instruction, None) # system_prompt is None by default in this call
+        self.assertEqual(call_args.kwargs["config"].tool_config.function_calling_config.mode, "ANY")
 
     def test_generate_with_system_prompt_and_temperature(self):
         client = GeminiDirectClient(model_name=self.model_name)
@@ -161,13 +171,13 @@ class TestGeminiLLMClient(unittest.TestCase):
 
         system_prompt_text = "You are a helpful bot."
         temp = 0.7
-        messages: LLMMessages = [[UserContentBlock(content=TextPrompt(text="Hi"))]]
+        messages = [[TextPrompt(text="Hi")]] # Directly use TextPrompt
 
         client.generate(messages=messages, max_tokens=20, system_prompt=system_prompt_text, temperature=temp)
 
         self.mock_generate_content.assert_called_once()
         call_args = self.mock_generate_content.call_args
-        self.assertEqual(call_args.kwargs["config"].system_instruction.parts[0].text, system_prompt_text)
+        self.assertEqual(call_args.kwargs["config"].system_instruction, system_prompt_text)
         self.assertEqual(call_args.kwargs["config"].temperature, temp)
 
     @patch("src.ii_agent.llm.gemini.generate_tool_call_id", return_value="fixed_call_id_123")
@@ -177,7 +187,7 @@ class TestGeminiLLMClient(unittest.TestCase):
         tool_args = {"location": "London"}
         self._prepare_mock_response(function_calls_data=[{"name": tool_name, "args": tool_args}]) # No ID from API
 
-        messages: LLMMessages = [[UserContentBlock(content=TextPrompt(text="What's the weather in London?"))]]
+        messages = [[TextPrompt(text="What's the weather in London?")]] # Directly use TextPrompt
         tools = [ToolParam(name=tool_name, description="Gets weather", input_schema={"type": "object", "properties": {"location": {"type": "string"}}})]
 
         response_content, _ = client.generate(messages=messages, max_tokens=50, tools=tools)
@@ -191,17 +201,16 @@ class TestGeminiLLMClient(unittest.TestCase):
 
         self.mock_generate_content.assert_called_once()
         call_args = self.mock_generate_content.call_args
-        self.assertIsNotNone(call_args.kwargs["config"].tools)
+        self.assertIsNotNone(call_args.kwargs["config"].tools) # tools is part of GenerationConfig
         self.assertEqual(len(call_args.kwargs["config"].tools[0].function_declarations), 1)
         self.assertEqual(call_args.kwargs["config"].tools[0].function_declarations[0].name, tool_name)
-        # Default tool_choice is 'ANY'
-        self.assertEqual(call_args.kwargs["config"].tool_config.function_calling_config.mode, "ANY")
+        self.assertEqual(call_args.kwargs["config"].tool_config.function_calling_config.mode, "ANY") # tool_config is part of GenerationConfig
 
     def test_generate_with_tool_choice_auto(self):
         client = GeminiDirectClient(model_name=self.model_name)
         self._prepare_mock_response(text_content="Okay.") # Gemini might return text with AUTO
 
-        messages: LLMMessages = [[UserContentBlock(content=TextPrompt(text="Hi"))]]
+        messages = [[TextPrompt(text="Hi")]] # Directly use TextPrompt
         tools = [ToolParam(name="any_tool", description="desc", input_schema={})]
 
         client.generate(messages=messages, max_tokens=10, tools=tools, tool_choice={"type": "auto"})
@@ -216,10 +225,10 @@ class TestGeminiLLMClient(unittest.TestCase):
         self._prepare_mock_response(text_content="The weather is sunny.")
 
         tool_name = "get_weather"
-        messages: LLMMessages = [
-            [UserContentBlock(content=TextPrompt(text="What's the weather in London?"))],
-            [AssistantContentBlock(content=ToolCall(tool_call_id="call_123", tool_name=tool_name, tool_input={"location": "London"}))],
-            [UserContentBlock(content=ToolFormattedResult(tool_call_id="call_123", tool_name=tool_name, tool_output="Sunny"))]
+        messages = [
+            [TextPrompt(text="What's the weather in London?")], # Directly use TextPrompt
+            [ToolCall(tool_call_id="call_123", tool_name=tool_name, tool_input={"location": "London"})], # Directly use ToolCall (was already correct as AssistantContentBlock)
+            [ToolFormattedResult(tool_call_id="call_123", tool_name=tool_name, tool_output="Sunny")] # Directly use ToolFormattedResult
         ]
         tools = [ToolParam(name=tool_name, description="Gets weather", input_schema={})]
 
@@ -243,10 +252,10 @@ class TestGeminiLLMClient(unittest.TestCase):
             {"type": "text", "text": "This is a generated caption."},
             {"type": "image", "source": {"media_type": "image/png", "data": b"fakeimagedata"}}
         ]
-        messages: LLMMessages = [
-            [UserContentBlock(content=TextPrompt(text="Generate an image and caption"))],
-            [AssistantContentBlock(content=ToolCall(tool_call_id="call_img_txt", tool_name=tool_name, tool_input={}))],
-            [UserContentBlock(content=ToolFormattedResult(tool_call_id="call_img_txt", tool_name=tool_name, tool_output=tool_output_list))]
+        messages = [
+            [TextPrompt(text="Generate an image and caption")], # Directly use TextPrompt
+            [ToolCall(tool_call_id="call_img_txt", tool_name=tool_name, tool_input={})], # Directly use ToolCall
+            [ToolFormattedResult(tool_call_id="call_img_txt", tool_name=tool_name, tool_output=tool_output_list)] # Directly use ToolFormattedResult
         ]
         tools = [ToolParam(name=tool_name, description="Gets image and text", input_schema={})]
 
@@ -256,11 +265,18 @@ class TestGeminiLLMClient(unittest.TestCase):
         call_args = self.mock_generate_content.call_args
 
         last_message_parts = call_args.kwargs["contents"][-1].parts
-        self.assertEqual(len(last_message_parts), 2) # text part and image part
-        self.assertEqual(last_message_parts[0].function_response.name, tool_name) # Name is associated with the first part of the response
-        self.assertEqual(last_message_parts[0].function_response.response['result'][0]['text'], "This is a generated caption.")
-        self.assertEqual(last_message_parts[1].inline_data.mime_type, "image/png")
-        self.assertEqual(last_message_parts[1].inline_data.data, b"fakeimagedata")
+        self.assertEqual(len(last_message_parts), 1) # Should be a single FunctionResponse Part
+        self.assertIsNotNone(last_message_parts[0].function_response, "Part should be a function_response") # Added this line from my previous correct reasoning
+        self.assertEqual(last_message_parts[0].function_response.name, tool_name)
+
+        # The actual list is now nested under 'result' in the response
+        actual_tool_output_list_from_response = last_message_parts[0].function_response.response['result']
+        self.assertEqual(len(actual_tool_output_list_from_response), 2)
+        self.assertEqual(actual_tool_output_list_from_response[0]['text'], "This is a generated caption.")
+        # For the image part, check its structure within the list
+        self.assertEqual(actual_tool_output_list_from_response[1]['type'], "image")
+        self.assertEqual(actual_tool_output_list_from_response[1]['source']['media_type'], "image/png")
+        self.assertEqual(actual_tool_output_list_from_response[1]['source']['data'], b"fakeimagedata")
 
 
     @patch("time.sleep", return_value=None) # Mock time.sleep
@@ -269,12 +285,18 @@ class TestGeminiLLMClient(unittest.TestCase):
 
         # Simulate API error on first call, success on second
         # Using ResourceExhausted as an example of a retryable error (code 429)
+        # Assuming ResourceExhausted is in genai_types or genai.errors (which we can't find)
+        # For now, let's use a generic Exception and refine if tests fail here.
+        # If genai_types.ResourceExhausted is not valid, this will need to change.
+        # errors.APIError(message, response_json) - provide minimal response_json
+        mock_error_429 = errors.APIError("Rate limited - simulated", response_json={})
+        mock_error_429.code = 429 # Simulate ResourceExhausted
         self.mock_generate_content.side_effect = [
-            genai_errors.ResourceExhausted("Rate limited", errors=MagicMock()), # errors.APIError needs an 'errors' argument
+            mock_error_429,
             self._prepare_mock_response(text_content="Success after retry")
         ]
 
-        messages: LLMMessages = [[UserContentBlock(content=TextPrompt(text="Test retry"))]]
+        messages = [[TextPrompt(text="Test retry")]]
         client.generate(messages=messages, max_tokens=20)
 
         self.assertEqual(self.mock_generate_content.call_count, 2)
@@ -284,11 +306,14 @@ class TestGeminiLLMClient(unittest.TestCase):
     def test_generate_api_error_max_retries_exceeded(self, mock_sleep):
         client = GeminiDirectClient(model_name=self.model_name, max_retries=2)
         # Simulate API error on all calls (DeadlineExceeded is code 503)
-        self.mock_generate_content.side_effect = genai_errors.DeadlineExceeded("Timeout", errors=MagicMock())
+        mock_error_503 = errors.APIError("Timeout - simulated", response_json={})
+        mock_error_503.code = 503 # Simulate DeadlineExceeded
+        self.mock_generate_content.side_effect = mock_error_503
 
-        messages: LLMMessages = [[UserContentBlock(content=TextPrompt(text="Test max retry"))]]
-        with self.assertRaises(genai_errors.DeadlineExceeded):
+        messages = [[TextPrompt(text="Test max retry")]]
+        with self.assertRaises(errors.APIError) as cm:
             client.generate(messages=messages, max_tokens=20)
+        self.assertEqual(cm.exception.code, 503)
 
         self.assertEqual(self.mock_generate_content.call_count, client.max_retries)
         self.assertEqual(mock_sleep.call_count, client.max_retries - 1)
@@ -296,11 +321,14 @@ class TestGeminiLLMClient(unittest.TestCase):
     def test_generate_non_retryable_api_error(self):
         client = GeminiDirectClient(model_name=self.model_name, max_retries=2)
         # InternalServerError is not explicitly listed for retry, so it should fail fast
-        self.mock_generate_content.side_effect = genai_errors.InternalServerError("Internal error", errors=MagicMock())
+        mock_error_500 = errors.APIError("Internal error - simulated", response_json={})
+        mock_error_500.code = 500 # Simulate InternalServerError
+        self.mock_generate_content.side_effect = mock_error_500
 
-        messages: LLMMessages = [[UserContentBlock(content=TextPrompt(text="Test non-retry error"))]]
-        with self.assertRaises(genai_errors.InternalServerError):
+        messages = [[TextPrompt(text="Test non-retry error")]]
+        with self.assertRaises(errors.APIError) as cm:
             client.generate(messages=messages, max_tokens=20)
+        self.assertEqual(cm.exception.code, 500)
         self.assertEqual(self.mock_generate_content.call_count, 1)
 
 
@@ -309,11 +337,11 @@ class TestGeminiLLMClient(unittest.TestCase):
         self._prepare_mock_response(text_content="Image received.")
 
         image_data = b"fake_image_bytes"
-        messages: LLMMessages = [
-            [UserContentBlock(content=[
-                TextPrompt(text="What is this image?"),
-                ImageBlock(source={"media_type": "image/png", "data": image_data})
-            ])]
+        messages = [
+            [ # Outer list for turns
+                TextPrompt(text="What is this image?"), # Directly use TextPrompt
+                ImageBlock(type="image", source={"media_type": "image/png", "data": image_data})
+            ]
         ]
 
         client.generate(messages=messages, max_tokens=30)

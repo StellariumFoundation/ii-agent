@@ -51,7 +51,7 @@ class TestAudioTranscribeTool(unittest.TestCase):
             model="gpt-4o-transcribe", file=mock_file_open.return_value
         )
         self.assertIsInstance(result, ToolImplOutput)
-        self.assertEqual(result.output_for_llm, "This is a test transcript.")
+        self.assertEqual(result.tool_output, "This is a test transcript.")
         self.assertTrue(result.auxiliary_data["success"])
 
     def test_run_impl_file_not_found(self):
@@ -59,7 +59,7 @@ class TestAudioTranscribeTool(unittest.TestCase):
             tool_input = {"file_path": "nonexistent.mp3"}
             result = self.tool.run_impl(tool_input)
         self.assertFalse(result.auxiliary_data["success"])
-        self.assertIn("File not found", result.output_for_llm)
+        self.assertIn("File not found", result.tool_output)
 
     def test_run_impl_path_not_a_file(self):
         with patch("pathlib.Path.exists", return_value=True), \
@@ -67,7 +67,7 @@ class TestAudioTranscribeTool(unittest.TestCase):
             tool_input = {"file_path": "directory_path"}
             result = self.tool.run_impl(tool_input)
         self.assertFalse(result.auxiliary_data["success"])
-        self.assertIn("is not a file", result.output_for_llm)
+        self.assertIn("is not a file", result.tool_output)
 
     def test_run_impl_unsupported_format(self):
         with patch("pathlib.Path.exists", return_value=True), \
@@ -75,7 +75,7 @@ class TestAudioTranscribeTool(unittest.TestCase):
             tool_input = {"file_path": "audio.txt"} # .txt is not supported
             result = self.tool.run_impl(tool_input)
         self.assertFalse(result.auxiliary_data["success"])
-        self.assertIn("not supported for transcription", result.output_for_llm)
+        self.assertIn("not supported for transcription", result.tool_output)
 
     @patch("pathlib.Path.exists", return_value=True)
     @patch("pathlib.Path.is_file", return_value=True)
@@ -87,7 +87,7 @@ class TestAudioTranscribeTool(unittest.TestCase):
         tool_input = {"file_path": "audio.wav"}
         result = self.tool.run_impl(tool_input)
         self.assertFalse(result.auxiliary_data["success"])
-        self.assertIn("OpenAI API Error", result.output_for_llm)
+        self.assertIn("OpenAI API Error", result.tool_output)
 
 
 class TestAudioGenerateTool(unittest.TestCase):
@@ -132,7 +132,7 @@ class TestAudioGenerateTool(unittest.TestCase):
         result = self.tool.run_impl(tool_input)
 
         self.assertTrue(result.auxiliary_data["success"])
-        self.assertIn("Successfully generated audio", result.output_for_llm)
+        self.assertIn("Successfully generated audio", result.tool_output)
         self.assertEqual(result.auxiliary_data["output_path"], "generated/speech.mp3")
 
         # Check API call
@@ -153,7 +153,7 @@ class TestAudioGenerateTool(unittest.TestCase):
         tool_input = {"text": "test", "output_filename": "speech.wav"} # Not .mp3
         result = self.tool.run_impl(tool_input)
         self.assertFalse(result.auxiliary_data["success"])
-        self.assertIn("output_filename must end with .mp3", result.output_for_llm)
+        self.assertIn("output_filename must end with .mp3", result.tool_output)
 
     @patch("pathlib.Path.mkdir")
     def test_run_impl_api_error(self, mock_mkdir):
@@ -163,7 +163,7 @@ class TestAudioGenerateTool(unittest.TestCase):
         tool_input = {"text": "test", "output_filename": "error.mp3"}
         result = self.tool.run_impl(tool_input)
         self.assertFalse(result.auxiliary_data["success"])
-        self.assertIn("OpenAI API Error", result.output_for_llm)
+        self.assertIn("OpenAI API Error", result.tool_output)
 
     @patch("pathlib.Path.mkdir")
     @patch("builtins.open", new_callable=mock_open)
@@ -181,7 +181,7 @@ class TestAudioGenerateTool(unittest.TestCase):
         result = self.tool.run_impl(tool_input)
 
         self.assertFalse(result.auxiliary_data["success"])
-        self.assertIn("ffmpeg command not found", result.output_for_llm)
+        self.assertIn("ffmpeg command not found", result.tool_output)
         mock_os_remove.assert_called() # Temp WAV should still be cleaned up
 
     @patch("pathlib.Path.mkdir")
@@ -199,7 +199,7 @@ class TestAudioGenerateTool(unittest.TestCase):
         result = self.tool.run_impl(tool_input)
 
         self.assertFalse(result.auxiliary_data["success"])
-        self.assertIn("Error converting audio to MP3 using ffmpeg", result.output_for_llm)
+        self.assertIn("Error converting audio to MP3 using ffmpeg", result.tool_output)
         mock_os_remove.assert_called()
 
     @patch('subprocess.run', side_effect=FileNotFoundError) # To test _check_ffmpeg

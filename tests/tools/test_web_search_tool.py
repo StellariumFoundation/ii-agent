@@ -32,8 +32,8 @@ class TestWebSearchTool(unittest.TestCase):
 
         self.mock_search_client_instance.forward.assert_called_once_with(query)
         self.assertIsInstance(result, ToolImplOutput)
-        self.assertEqual(result.output_for_llm, expected_search_results_str)
-        self.assertEqual(result.output_for_user, f"Search Results with query: {query} successfully retrieved using MockedSearchClient")
+        self.assertEqual(result.tool_output, expected_search_results_str)
+        self.assertEqual(result.tool_result_message, f"Search Results with query: {query} successfully retrieved using MockedSearchClient")
         self.assertTrue(result.auxiliary_data["success"])
 
     def test_run_impl_client_raises_exception(self):
@@ -47,8 +47,8 @@ class TestWebSearchTool(unittest.TestCase):
         self.mock_search_client_instance.forward.assert_called_once_with(query)
         self.assertIsInstance(result, ToolImplOutput)
         self.assertFalse(result.auxiliary_data["success"])
-        self.assertIn(f"Error searching the web with MockedSearchClient: {error_message}", result.output_for_llm)
-        self.assertEqual(result.output_for_user, f"Failed to search the web with query: {query}")
+        self.assertIn(f"Error searching the web with MockedSearchClient: {error_message}", result.tool_output)
+        self.assertEqual(result.tool_result_message, f"Failed to search the web with query: {query}")
 
     def test_run_impl_missing_query_input(self):
         # This should ideally be caught by schema validation in LLMTool.execute
